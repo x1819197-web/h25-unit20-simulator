@@ -1,0 +1,17 @@
+{
+ "stage": "2A",
+ "test": "33/33 PASS",
+ "files": {
+  "js/config.js": "515bc7326060dbe003efe098e6cc92953a5db7af3b22d9283256cdfa130e098e",
+  "js/rng.js": "6550453cd5cd2bfee31f587fe2868111119cc1c918386a17d1c4ed18dffa3463",
+  "js/exhaust-math.js": "5e1135094f49ac4d422e63acd61907565c5cb8c15d61be236cc98eb0bd3e93df",
+  "js/engine.js": "a00288308e5ac713e05e430c0089473caf8bbba2b2723eba0ff6a83f7aff850a",
+  "js/app.js": "d84714babc74d91ff9002395c2ad04ba764e78f10e029ce2a2367f5877d758c9",
+  "js/screens/exhaust.js": "bd6621ee393321861b4a4f9c5239a85393ef1378b50a7e697048043dd9deb1bf",
+  "index.html": "8808be4e9573e370683cfee92775eaaf40717324123122f08a4179587a676894",
+  "tests/test-a.js": "aca0c3bf62a6485def380c6b87f60ba2c0526ccec91ba1d0709ea3ecf5058962",
+  "build.js": "e805b34a89e06ecdf0852a21b05e3f1d0a67afcbfa977725b7c851b2aae8a027",
+  "package.json": "3443b53ff9ee03bc2bd27f8be68858e9f20b43de6b621852834124ccec64c466",
+  "AUDIT.md": "f3ca5d2343e004e76e2b30bb2ec35c2c2eca74fe1fb64f506a521785c5ddef44"
+ }
+}

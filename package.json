@@ -1,0 +1,13 @@
+{
+  "name": "unit20-h25-simulator",
+  "version": "2A.1",
+  "private": true,
+  "description": "UNIT-20 simulator (H25 + KU-20) — manba, deploy build.js orqali generatsiyalanadi",
+  "scripts": {
+    "test": "node tests/test-a.js",
+    "build": "node build.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

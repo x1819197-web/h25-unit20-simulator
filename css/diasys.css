@@ -1,0 +1,110 @@
+/* DIASYS Netmation [Operator] — overlay architecture.
+ * The reference screenshot is the pixel-exact background; only live values
+ * (white cells) and working buttons are overlaid. Fixed 1280x574 stage
+ * (top date/time header removed — starts at H25 GAS TURBINE GENERATOR bar). */
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  background: #000; height: 100%; overflow: hidden;
+  font-family: "MS Sans Serif", Tahoma, Geneva, Verdana, sans-serif;
+  -webkit-user-select: none; user-select: none;
+}
+#viewport {
+  position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+}
+#stage {
+  width: 1280px; height: 574px; flex: 0 0 auto;
+  position: relative; transform-origin: center center;
+  font-size: 12px; color: #000;
+}
+#refbg { position: absolute; left: 0; top: 0; width: 1280px; height: 574px; }
+
+/* page overlay (mimic area) — nav zonalar USTIDA: sahifa tugmasi har doim bosiladi.
+ * Oldin #navzones DOMda keyin kelgani uchun ustida chizilib, x>1115 dagi
+ * tugmalar (overspeed LIFT, vib TRIP) "ora-orada ishlamay" qolgandi. */
+#body { position: absolute; left: 0; top: 24px; width: 1108px; height: 506px; z-index: 2; }
+#page { position: relative; width: 1108px; height: 506px; }
+
+/* transparent nav click zones */
+#navzones { position: absolute; left: 0; top: 0; width: 1280px; height: 574px;
+  pointer-events: none; z-index: 1; }
+.ozone {
+  position: absolute; left: 1115px; width: 160px; height: 20px;
+  cursor: pointer; pointer-events: auto;
+}
+.ozone.dbg { border: 2px solid #FF0000; background: rgba(255,0,0,.15); }
+
+/* ===== overlay widgets (opaque replicas covering ref cells/buttons) ===== */
+.panel { position: absolute; }
+.panel.ghost { background: transparent; border: none; box-shadow: none; }
+.panel .ph { text-align: center; font-weight: bold; font-size: 12px;
+  color: #fff; padding: 2px 4px; font-family: Arial, sans-serif; }
+.ov {
+  position: absolute; background: #fff; color: #000;
+  border: 1px inset #808080; font-family: Arial, sans-serif; font-weight: bold;
+  display: flex; align-items: center; justify-content: center; gap: 5px;
+  white-space: nowrap; overflow: hidden; cursor: default;
+}
+.obtn {
+  position: absolute; background: #C0C0C0; color: #000;
+  border: 2px outset #ffffff; font-family: Arial, sans-serif;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; white-space: nowrap; overflow: hidden;
+}
+.obtn:active { border-style: inset; }
+.obtn.orange { background: rgb(251,165,0); border-style: inset; }
+.obtn.clear { background: transparent; border: none; }
+.fbar { position: absolute; background: rgb(0,0,122); }
+.olamp { position: absolute; border: 1px solid #000; }
+.osym { position: absolute; border: 2px solid #000; overflow: hidden; }
+/* 52G / 52L / 41 uzgich: rangli kvadrat o'rtasidan qora chiziq (pichoq).
+ * Chiziq sim BO'YLAB: gorizontal bar -> gorizontal chiziq;
+ * vertikal bar (.hz) -> vertikal chiziq. */
+.osym::after { content: ""; position: absolute; top: 50%; left: -3px; right: -3px;
+  height: 2px; margin-top: -1px; background: #000; }
+.osym.hz::after { top: -3px; bottom: -3px; left: 50%; right: auto;
+  width: 2px; height: auto; margin-top: 0; margin-left: -1px; }
+.olamptext { position: absolute; border: 2px outset #fff; color: #000;
+  font-family: Arial, sans-serif; display: flex; align-items: center;
+  justify-content: center; text-align: center; line-height: 1.1;
+  white-space: normal; overflow: hidden; }
+.scrow { position: absolute; border: 1px solid #000; color: #000;
+  font-family: Arial, sans-serif; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; text-align: center;
+  line-height: 1.25; }
+.schead { position: absolute; background: rgb(0,0,122); color: #fff;
+  font-family: Arial, sans-serif; font-weight: bold;
+  display: flex; align-items: center; justify-content: center;
+  text-align: center; border: 1px solid #000; }
+.readybox { position: absolute; border: 2px outset #fff; color: #000;
+  font-family: Arial, sans-serif; font-weight: bold;
+  display: flex; align-items: center; justify-content: center;
+  text-align: center; }
+/* data report tables (screens 17-18) */
+.drtab { position: absolute; border: 1px solid #000; background: rgb(70,130,180);
+  font-family: Arial, sans-serif; overflow: hidden; }
+.drtab .drrow { display: flex; width: 100%; }
+.drtab .drl { flex: 1; color: #fff; font-weight: bold; padding: 1px 3px;
+  border-bottom: 1px solid rgba(0,0,0,.35); white-space: nowrap; overflow: hidden; }
+.drtab .drv { width: 44%; background: #fff; color: #000; font-weight: bold;
+  border-left: 1px solid #000; border-bottom: 1px solid #808080;
+  padding: 1px 3px; text-align: center; white-space: nowrap; overflow: hidden; }
+.omotor { position: absolute; border: 2px solid #000; border-radius: 50%;
+  color: #000; font-family: Arial, sans-serif; font-weight: bold;
+  display: flex; align-items: center; justify-content: center; }
+.opump { position: absolute; border: 2px solid #000; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; }
+.mcell { position: absolute; border: 2px outset #fff; color: #000;
+  font-family: Arial, sans-serif; display: flex; align-items: center;
+  justify-content: center; white-space: nowrap; overflow: hidden; }
+/* fullscreen button (viewport corner, outside the 1:1 HMI replica) */
+#fsbtn { position: fixed; right: 10px; bottom: 10px; z-index: 100;
+  background: rgba(0,0,40,.85); color: #FFC107; border: 2px solid #FFC107;
+  padding: 6px 12px; font-family: Arial, sans-serif; font-size: 12px;
+  font-weight: bold; cursor: pointer; border-radius: 4px; }
+/* trainer fault-injection panel (?trainer=1) — outside HMI, instructor only */
+#trainer { position: absolute; left: 8px; bottom: 8px; z-index: 50;
+  background: rgba(0,0,40,.92); color: #fff; border: 2px solid #FF9800;
+  padding: 6px 8px; font-family: Arial, sans-serif; font-size: 11px; }
+#trainer button { margin: 3px 4px 3px 0; padding: 4px 8px; font-size: 11px;
+  cursor: pointer; border: 2px outset #fff; }

@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>PL3009/PL3010 — КУ №20 СРЕДНЕГО ДАВЛЕНИЯ — UNIT-20 (H25+KU-20)</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:#0e0e0e;font-family:Arial,Helvetica,sans-serif;color:#111}
+#topbar{background:#1c1c1c;color:#eee;font-size:13px;padding:6px 12px;display:flex;gap:12px;align-items:center;position:sticky;top:0;z-index:50}
+#topbar .tab{background:#9d9d9d;color:#222;padding:5px 22px;border:1px solid #777;cursor:pointer;font-size:12px}
+#topbar .tab.act{background:#fff;font-weight:700}
+.h25chip{display:flex;align-items:center;gap:6px;border:1px solid #333;background:#0c150c;color:#c8ffc8;font-size:11px;padding:4px 8px;font-family:"Courier New",monospace;white-space:nowrap}
+.h25chip .dot{width:10px;height:10px;border-radius:50%;background:#666;flex:none}
+.h25chip.live .dot{background:#00e600;animation:blink .7s infinite}
+.h25chip.live{border-color:#00e600}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.15}}
+@keyframes blinkHard{0%,100%{opacity:1}50%{opacity:0}}
+#viewport{width:100%;overflow:auto;background:#0e0e0e}
+#stage{position:relative;width:1920px;height:1080px;transform-origin:top left;background:#c9c9c9}
+.scr{position:absolute;left:0;top:0;width:1920px;height:1080px;display:none}
+.scr.act{display:block}
+.scr img.bg{position:absolute;left:0;top:0;width:1920px;height:1080px;user-select:none;-webkit-user-drag:none}
+/* live value boxes — cover the static numbers in the screenshot 1:1 */
+.val{position:absolute;background:#fff;border:1px solid #3a3a3a;font-family:"Courier New",monospace;font-weight:700;color:#111;text-align:center;font-size:15px;line-height:20px;height:23px;overflow:hidden;white-space:nowrap;z-index:5}
+.val.tall{height:42px;line-height:20px;font-size:15px}
+.val.alarm{animation:blinkHard .55s infinite;border-color:#c00000;color:#c00000}
+/* clickable valve hotspots — tiny badge, image itself stays untouched */
+.hot{position:absolute;z-index:6;cursor:pointer;border:2px solid transparent;border-radius:6px}
+.hot:hover{border-color:#00b800}
+.hot .bdg{position:absolute;right:-8px;top:-10px;min-width:20px;height:20px;border-radius:50%;font-size:11px;font-weight:700;line-height:18px;text-align:center;border:1px solid #222;color:#fff;background:#0a7a0a;padding:0 3px}
+.hot.closed .bdg{background:#c40000}
+.hot.midv .bdg{background:#c9a400;color:#111}
+.hot.moving{animation:blink .45s infinite}
+.hot .pct{position:absolute;left:50%;bottom:-16px;transform:translateX(-50%);font-size:11px;font-weight:700;background:#fff;border:1px solid #555;padding:0 4px;font-family:"Courier New",monospace;white-space:nowrap}
+/* trip buttons placed over screenshot buttons */
+.tbtn{position:absolute;z-index:6;font-size:13px;font-weight:700;padding:3px 0;text-align:center;cursor:pointer;border:1px solid #222;width:110px}
+.tbtn.green{background:#00e600;color:#000}
+.tbtn.red{background:#c40000;color:#fff;animation:blink .6s infinite}
+.tbtn.gray{background:#eee;color:#111}
+.tripmsgbox{position:absolute;z-index:6;background:#fff;border:1px solid #777;font-size:13px;padding:2px 6px;color:#c00000;font-weight:700;overflow:hidden;white-space:nowrap}
+.tripmsgbox.tripped{animation:blinkHard .5s infinite}
+#linkbar{background:#101010;color:#ffe98a;font-size:12px;padding:7px 12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;position:sticky;bottom:0;z-index:50}
+.linkdot{display:inline-block;width:11px;height:11px;border-radius:50%;background:#666}
+.linkdot.live{background:#00e600;animation:blink .7s infinite}
+.testbtn{background:#0c2a0c;color:#7dff7d;border:1px solid #00c000;font-size:11px;padding:3px 10px;cursor:pointer;font-family:"Courier New",monospace}
+</style>
+</head>
+<body>
+<div id="topbar">
+<span class="tab act" id="tab9">◼ PL3009</span><span class="tab" id="tab10">◼ PL3010</span>
+<div class="h25chip" id="h25chip"><span class="dot"></span><span id="h25chipT">H25: --- AVTONOM</span></div>
+<button class="testbtn" id="h25test" title="H25 simulyatorsiz test">H25 TEST</button>
+<button class="testbtn" id="sndbtn" title="Avariya ovozini o'chirish/yoqish (brauzer birinchi klikdan keyin ovoz beradi)">🔊 OVOZ: ON</button>
+<span id="ku2h25" style="font-family:'Courier New',monospace;font-size:11px;color:#7dff7d">KU→H25: ---</span>
+</div>
+<div id="viewport"><div id="stage">
+<!-- ================= PL3009 ================= -->
+<div class="scr act" id="scr9">
+<img class="bg" src="ref/pl3009_full.png" alt="PL3009">
+<div class="val" id="t1" style="left:232px;top:333px;width:172px">209.16 degC</div>
+<div class="val" id="t2" style="left:1618px;top:333px;width:172px">211.23 degC</div>
+<div class="val" id="p3" style="left:678px;top:244px;width:122px">31.8bar g</div>
+<div class="val" id="p2" style="left:678px;top:270px;width:122px">31.8bar g</div>
+<div class="val" id="p1" style="left:678px;top:318px;width:122px">31.8bar g</div>
+<div class="val" id="pmed" style="left:548px;top:303px;width:122px">31.77bar g</div>
+<div class="val" id="c1" style="left:32px;top:365px;width:178px">-0.6 µS/cm</div>
+<div class="val" id="c2" style="left:32px;top:412px;width:178px">8.9 pH</div>
+<div class="val" id="c3" style="left:32px;top:459px;width:178px">-0.2 µS/cm</div>
+<div class="val" id="c4" style="left:32px;top:506px;width:178px">7.54 pH</div>
+<div class="val" id="c5" style="left:32px;top:553px;width:178px">13.9 µS/cm</div>
+<div class="val" id="c6" style="left:32px;top:600px;width:178px">16.0 ug/l</div>
+<div class="val" id="c7" style="left:32px;top:648px;width:178px">-0.0 µS/cm</div>
+<div class="val" id="l503" style="left:580px;top:425px;width:172px">63.34mm</div>
+<div class="val" id="l001" style="left:803px;top:425px;width:132px">3.1mm</div>
+<div class="val" id="l002" style="left:1024px;top:425px;width:132px">-22.7mm</div>
+<div class="val" id="l003" style="left:1236px;top:425px;width:132px">0.4mm</div>
+<div class="val" id="t3" style="left:232px;top:672px;width:172px">215.54 degC</div>
+<div class="val" id="t4" style="left:1618px;top:697px;width:172px">213.88 degC</div>
+<div class="val" id="lmed" style="left:1042px;top:663px;width:108px">-0.46mm</div>
+<div class="val tall" id="pid1box" style="left:1284px;top:792px;width:178px"><span id="pid1a">-0.46 mm</span><br><span id="pid1b">-0.46 mm</span></div>
+<div class="val tall" id="pid2box" style="left:1072px;top:928px;width:178px"><span id="pid2a">0.00 mm</span><br><span id="pid2b">-0.46 mm</span></div>
+<div class="val tall" id="pid3box" style="left:1322px;top:928px;width:178px"><span id="pid3a">55.75 m³/h</span><br><span id="pid3b">55.75 m³/h</span></div>
+<div class="hot" id="v32" style="left:690px;top:650px;width:60px;height:70px"><span class="bdg">M</span></div>
+<div class="hot" id="v33" style="left:845px;top:650px;width:70px;height:70px"><span class="bdg">M</span><span class="pct" id="v33pct">0%</span></div>
+<div class="hot" id="v62" style="left:800px;top:795px;width:80px;height:50px"><span class="bdg">M</span><span class="pct" id="v62pct">0%</span></div>
+<div class="hot closed" id="v61" style="left:800px;top:865px;width:80px;height:50px"><span class="bdg">M</span><span class="pct" id="v61pct">35%</span></div>
+<div class="hot closed" id="v63" style="left:800px;top:935px;width:80px;height:50px"><span class="bdg">A</span><span class="pct" id="v63pct">50%</span></div>
+<div class="tripmsgbox" id="tripmsg" style="left:14px;top:945px;width:280px">Local Boiler Shutdown Switch</div>
+<button class="tbtn green" id="tripProt" style="left:572px;top:918px">INACTIVE</button>
+<button class="tbtn gray" id="tripReset" style="left:572px;top:962px">RESET</button>
+</div>
+<!-- ================= PL3010 ================= -->
+<div class="scr" id="scr10">
+<img class="bg" src="ref/pl3010_full.png" alt="PL3010">
+<div class="val" id="s_t3" style="left:428px;top:224px;width:114px">414.8DegC</div>
+<div class="val" id="s_t2" style="left:428px;top:250px;width:114px">414.8DegC</div>
+<div class="val" id="s_t1" style="left:428px;top:276px;width:114px">414.8DegC</div>
+<div class="val" id="s_tmed" style="left:256px;top:274px;width:114px">414.80degC</div>
+<div class="val" id="s_p3" style="left:772px;top:224px;width:114px">29.3bar g</div>
+<div class="val" id="s_p2" style="left:772px;top:250px;width:114px">29.3bar g</div>
+<div class="val" id="s_p1" style="left:772px;top:276px;width:114px">29.3bar g</div>
+<div class="val" id="s_pmed" style="left:600px;top:274px;width:114px">29.30bar g</div>
+<div class="val" id="s_f3" style="left:1236px;top:224px;width:150px">50.96T/H</div>
+<div class="val" id="s_f2" style="left:1236px;top:258px;width:150px">49.80T/H</div>
+<div class="val" id="s_f1" style="left:1236px;top:316px;width:150px">51.11T/H</div>
+<div class="val" id="s_fmed" style="left:1496px;top:282px;width:114px">50.98T/H</div>
+<div class="val" id="s_tm" style="left:736px;top:364px;width:178px">382.71degC</div>
+<div class="val" id="s_h1" style="left:184px;top:524px;width:176px">352.87degC</div>
+<div class="val" id="s_h2" style="left:184px;top:572px;width:176px">353.5degC</div>
+<div class="val" id="s_hp" style="left:184px;top:618px;width:176px">30.62bar g</div>
+<div class="val" id="s_h3" style="left:184px;top:668px;width:176px">286.5degC</div>
+<div class="val" id="s_h4" style="left:184px;top:714px;width:176px">286.58degC</div>
+<div class="val" id="s_feed" style="left:34px;top:872px;width:178px">3.884T/H</div>
+<div class="val" id="s_c1" style="left:1302px;top:578px;width:176px">246.22degC</div>
+<div class="val" id="s_c2" style="left:1302px;top:618px;width:176px">47.05bar g</div>
+<div class="val" id="s_l1" style="left:1302px;top:688px;width:176px">102.9degC</div>
+<div class="val" id="s_l2" style="left:1302px;top:728px;width:176px">48.36bar g</div>
+<div class="val" id="s_lf1" style="left:1302px;top:768px;width:176px">55.21T/H</div>
+<div class="val" id="s_lf2" style="left:1302px;top:826px;width:176px">56.05T/H</div>
+<div class="val" id="s_lfm" style="left:1530px;top:856px;width:114px">55.43T/H</div>
+<div class="val" id="s_lf3" style="left:1302px;top:888px;width:176px">55.56T/H</div>
+<div class="hot" id="w34" style="left:590px;top:445px;width:70px;height:60px"><span class="bdg">M</span><span class="pct" id="w34pct">0%</span></div>
+<div class="hot" id="w32" style="left:1110px;top:255px;width:70px;height:60px"><span class="bdg">M</span><span class="pct" id="w32pct">0%</span></div>
+<div class="hot closed" id="w31" style="left:1110px;top:325px;width:60px;height:60px"><span class="bdg">M</span></div>
+<div class="hot" id="w33" style="left:960px;top:385px;width:70px;height:60px"><span class="bdg">M</span><span class="pct" id="w33pct">10%</span></div>
+<div class="hot" id="wA32" style="left:500px;top:835px;width:60px;height:60px"><span class="bdg">M</span></div>
+<div class="hot" id="wA31b" style="left:610px;top:875px;width:60px;height:60px"><span class="bdg">M</span></div>
+<div class="hot midv" id="wA31" style="left:790px;top:850px;width:60px;height:60px"><span class="bdg">M</span></div>
+<div class="hot closed" id="wE31" style="left:270px;top:915px;width:60px;height:50px"><span class="bdg">M</span></div>
+<div class="hot closed" id="wE61" style="left:420px;top:915px;width:70px;height:50px"><span class="bdg">A</span><span class="pct" id="wE61pct">29%</span></div>
+<div class="hot closed" id="wB31" style="left:1115px;top:790px;width:60px;height:60px"><span class="bdg">M</span></div>
+</div>
+</div></div>
+<div id="linkbar"><span class="linkdot" id="linkdot"></span><span id="linktxt">H25-LINK: ulanmagan (avtonom)</span><span>|</span><span>Klik klapanga: och/yop · Shift+klik: -5% · Alt+klik: +5% · 2x klik: M/R/A · Rasm 1:1 — quvur/baraban rasmning o'zi, qiyshayish yo'q</span></div>
+<script>
+function fitStage(){var s=document.getElementById('stage');var sc=Math.min(window.innerWidth/1920,window.innerHeight/1080,1);s.style.transform='scale('+sc+')';var h=1080*sc;document.getElementById('viewport').style.height=h+'px';}
+window.addEventListener('resize',fitStage);
+let S={level:-0.46,p:31.77,t1:209.16,t2:211.23,t3:215.54,t4:213.88,feed:55.75,steam:55.75,blow:2.1,trip:false,prot:false,pHP:29.30,tSH:414.8,tMid:382.71,tH1:352.87,tH2:353.5,pH:30.62,tH3:286.5,tH4:286.58,feedVD:3.884,p1:31.8,p2:31.8,p3:31.84};
+let V={v32:{pct:65,tgt:65,open:true,mode:'M'},v33:{pct:0,tgt:0,open:true,mode:'M'},v62:{pct:0,tgt:0,open:true,mode:'M'},v61:{pct:35,tgt:35,open:false,mode:'M'},v63:{pct:50,tgt:50,open:false,mode:'A'},w32:{pct:0,tgt:0,open:true,mode:'M'},w31:{pct:70,tgt:70,open:false,mode:'M'},w33:{pct:10,tgt:10,open:true,mode:'M'},w34:{pct:0,tgt:0,open:true,mode:'M'},wA32:{pct:40,tgt:40,open:true,mode:'M'},wA31b:{pct:40,tgt:40,open:true,mode:'M'},wA31:{pct:50,tgt:50,open:true,mode:'M',mid:true},wE31:{pct:80,tgt:80,open:false,mode:'M'},wE61:{pct:29,tgt:29,open:false,mode:'A'},wB31:{pct:60,tgt:60,open:false,mode:'M'}};
+let H25LIVE=null,lastH25=0,bc=null,TEST_H25=null;
+try{bc=('BroadcastChannel' in window)?new BroadcastChannel('unit20'):null;}catch(e){}
+function $(id){return document.getElementById(id)}
+function rnd(n){return (Math.random()-0.5)*n}
+function fmt(x,d){return x.toFixed(d)}
+function paintValve(id){let el=$(id);if(!el)return;let v=V[id];if(!v)return;el.classList.remove('closed','midv');if(v.mid){el.classList.add('midv');}else if(!v.open){el.classList.add('closed');}el.classList.toggle('moving',Math.abs(v.pct-v.tgt)>0.5);let b=el.querySelector('.bdg');if(b)b.textContent=v.mode;}
+document.querySelectorAll('.hot').forEach(el=>{el.addEventListener('click',e=>{e.stopPropagation();let v=V[el.id];if(!v)return;if(e.shiftKey){v.tgt=Math.min(100,Math.max(0,Math.round(v.pct)-5));}else if(e.altKey){v.tgt=Math.min(100,Math.max(0,Math.round(v.pct)+5));}else{v.open=!v.open;v.tgt=v.open?100:0;}paintValve(el.id);});el.addEventListener('dblclick',e=>{e.preventDefault();e.stopPropagation();let v=V[el.id];if(!v)return;v.mode=(v.mode==='M'?'R':(v.mode==='R'?'A':'M'));paintValve(el.id);});paintValve(el.id);});
+if(bc){bc.onmessage=function(ev){var m=ev&&ev.data;if(m&&m.src==='h25'){H25LIVE=m;lastH25=Date.now();TEST_H25=null;}}}
+setInterval(function(){try{var raw=localStorage.getItem('h25_live');if(raw){var m=JSON.parse(raw);if(m&&m.t&&Date.now()-m.t<6000){H25LIVE=m;lastH25=Date.now();TEST_H25=null;}}}catch(e){}},1200);
+$('h25test').onclick=()=>{if(TEST_H25){TEST_H25=null;$('h25test').textContent='H25 TEST';}else{TEST_H25={exh_t:595,power:28.6,running:true,tripped:false};$('h25test').textContent='TEST OFF';let t=0;let iv=setInterval(()=>{t++;if(!TEST_H25){clearInterval(iv);return;}TEST_H25.exh_t=595+Math.sin(t/5)*25;TEST_H25.power=28.6+Math.sin(t/7)*2;},1000);}};
+/* ---- AVARIYA OVOZI (WebAudio, faylsiz): TRIP = sirena, ogohlantirish = beep ---- */
+let SND_ON=true,AC=null,beepT=0,sirenT=0,sirenHi=false;
+function ac(){if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)();}catch(e){}}if(AC&&AC.state==='suspended')AC.resume();return AC;}
+['click','keydown'].forEach(ev=>document.addEventListener(ev,()=>ac(),{once:true}));
+function tone(f,ms){let c=ac();if(!c||!SND_ON)return;let o=c.createOscillator(),g=c.createGain();o.type='square';o.frequency.value=f;g.gain.setValueAtTime(0.12,c.currentTime);g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+ms/1000);o.connect(g);g.connect(c.destination);o.start();o.stop(c.currentTime+ms/1000);}
+$('sndbtn').onclick=()=>{SND_ON=!SND_ON;$('sndbtn').textContent=SND_ON?'🔊 OVOZ: ON':'🔇 OVOZ: OFF';};
+function alarmSound(isTrip,isWarn){let now=Date.now();if(!SND_ON)return;if(isTrip){if(now-sirenT>450){sirenT=now;sirenHi=!sirenHi;tone(sirenHi?880:620,380);}}else if(isWarn){if(now-beepT>1100){beepT=now;tone(990,160);}}}
+$('tripProt').onclick=()=>{S.prot=!S.prot;$('tripProt').textContent=S.prot?'ACTIVE':'INACTIVE';$('tripProt').className='tbtn '+(S.prot?'red':'green');};
+$('tripReset').onclick=()=>{if(Math.abs(S.level)<30&&S.p<34){S.trip=false;$('tripmsg').textContent='Local Boiler Shutdown Switch';$('tripmsg').classList.remove('tripped');}};
+function show(n){$('scr9').classList.toggle('act',n===9);$('scr10').classList.toggle('act',n===10);$('tab9').className='tab'+(n===9?' act':'');$('tab10').className='tab'+(n===10?' act':'');}
+$('tab9').onclick=()=>show(9);$('tab10').onclick=()=>show(10);
+if(location.hash==='#10')show(10);
+function median3(a,b,c,mode){if(mode==='MAX')return Math.max(a,b,c);if(mode==='MIN')return Math.min(a,b,c);if(mode==='AVG')return (a+b+c)/3;let s=[a,b,c].sort((x,y)=>x-y);return s[1];}
+setInterval(()=>{
+let H=TEST_H25||H25LIVE;let linked=H&&(TEST_H25||Date.now()-lastH25<6000);
+let exhT=linked?H.exh_t:595,power=linked?H.power:28.6;
+let h25run=linked?!!H.running:true,h25trip=linked?!!H.tripped:false;
+if(TEST_H25)linked=true;
+$('linkdot').className='linkdot'+(linked?' live':'');
+$('h25chip').className='h25chip'+(linked?' live':'');
+$('h25chipT').textContent=(TEST_H25?'H25-TEST: ':'H25: ')+(linked?(fmt(exhT,0)+'C '+fmt(power,1)+'MW'):'AVTONOM');
+$('linktxt').textContent=(TEST_H25?'H25-TEST ACTIVE: ':(linked?'H25-LINK ACTIVE: EXH '+fmt(exhT,1)+'C P '+fmt(power,1)+'MW ':'H25-LINK: ulanmagan (avtonom) '))+(h25trip?'TRIP!':(h25run?'RUN':'STOP'));
+for(let k in V){let v=V[k];let d=v.tgt-v.pct;if(Math.abs(d)>0.4){v.pct+=Math.sign(d)*Math.min(Math.abs(d),7);}else v.pct=v.tgt;paintValve(k);}
+let openFeed=(V.v61.pct+V.v63.pct)/200;
+let heatK=h25run&&!h25trip?(0.55+0.45*(power/28.6)):0.25;if(h25trip)heatK=0.2;
+let targetFeed=120*openFeed*(1-0.004*(S.p-31.77))*(0.7+0.3*V.wE61.pct/50);
+if(S.trip)targetFeed*=0.15;
+S.feed+=(targetFeed-S.feed)*0.22+rnd(0.2);
+let targetSteam=(40*heatK+12)+openFeed*8+(S.p-31.77)*6+(V.v32.pct/100)*4;
+if(!h25run)targetSteam*=0.4;if(S.trip)targetSteam*=0.3;
+S.steam+=(targetSteam-S.steam)*0.18+rnd(0.2);S.steam=Math.max(0,S.steam);
+S.blow+=(((V.v32.pct/100)*3+(V.v33.pct/100)*3)-S.blow)*0.2;
+S.level+=((S.feed-S.steam-S.blow)*0.55*0.6)*0.12+rnd(0.25);S.level=Math.max(-80,Math.min(90,S.level));
+S.p+=((S.feed*0.55-S.steam*0.58)*0.004-(S.level*0.0002))+rnd(0.02);S.p=Math.max(28,Math.min(35,S.p));
+let load=S.steam/60;
+S.t1+=((195+load*22+(S.p-31.77)*2)-S.t1)*0.08+rnd(0.12);
+S.t3+=((201+load*23+(S.p-31.77)*2)-S.t3)*0.08+rnd(0.12);
+S.t2+=((197+load*22+(S.p-31.77)*2.5)-S.t2)*0.08+rnd(0.12);
+S.t4+=((199+load*23+(S.p-31.77)*2.5)-S.t4)*0.08+rnd(0.12);
+S.p1=S.p+0.03+rnd(0.02);S.p2=S.p+0.02+rnd(0.02);S.p3=S.p+0.04+rnd(0.02);
+let mainOpen=V.w31.pct/100,byp=V.w32.pct/100;
+let totFlow=Math.max(0,S.steam*(0.6+0.4*mainOpen)+byp*6);
+S.pHP+=(((S.p-2.4)-S.pHP)*0.08)+rnd(0.03);
+let tSHt=340+(exhT-450)*0.28+load*18+byp*8-(100-V.w31.pct)*0.05;if(!h25run)tSHt=120;
+S.tSH+=((tSHt-S.tSH)*0.06)+rnd(0.25);
+S.tMid+=(((300+(exhT-450)*0.2+load*15)-S.tMid)*0.06)+rnd(0.25);
+S.tH1+=(((280+(exhT-450)*0.22+load*12)-S.tH1)*0.07)+rnd(0.25);
+S.tH2=S.tH1+rnd(0.15);S.pH=S.p-1.1+rnd(0.03);
+S.tH3+=(((240+(exhT-450)*0.12+load*10+(V.wA32.pct/100)*10)-S.tH3)*0.07)+rnd(0.2);
+S.tH4=S.tH3+rnd(0.12);
+S.feedVD+=(((2+V.wE61.pct/100*4+V.wE31.pct/100*2)-S.feedVD)*0.08)+rnd(0.04);
+if(S.prot&&(S.level>50||S.level<-50||S.p>34.5)){if(!S.trip){S.trip=true;$('tripmsg').textContent='BOILER TRIPPED! Level/PRESS';$('tripmsg').classList.add('tripped');}}
+let lvlAlarm=Math.abs(S.level)>45,pAlarm=S.p>34;
+alarmSound(S.trip||h25trip, lvlAlarm||pAlarm);
+$('lmed').textContent=fmt(S.level,2)+'mm';$('l001').textContent=fmt(S.level+3.5,1)+'mm';
+$('l002').textContent=fmt(S.level-22.2,1)+'mm';$('l003').textContent=fmt(S.level+0.9,1)+'mm';
+$('l503').textContent=fmt(S.level+63.8,2)+'mm';
+$('pmed').textContent=fmt(S.p,2)+'bar g';$('p1').textContent=fmt(S.p1,1)+'bar g';$('p2').textContent=fmt(S.p2,1)+'bar g';$('p3').textContent=fmt(S.p3,1)+'bar g';
+$('pmed').classList.toggle('alarm',pAlarm);$('lmed').classList.toggle('alarm',lvlAlarm);
+$('l001').classList.toggle('alarm',lvlAlarm);$('t1').classList.toggle('alarm',h25trip);
+$('t1').textContent=fmt(S.t1,2)+' degC';$('t2').textContent=fmt(S.t2,2)+' degC';$('t3').textContent=fmt(S.t3,2)+' degC';$('t4').textContent=fmt(S.t4,2)+' degC';
+$('c1').textContent=fmt(-0.6+rnd(0.1),1)+' µS/cm';$('c2').textContent=fmt(8.9+rnd(0.05),1)+' pH';$('c3').textContent=fmt(-0.2+rnd(0.1),1)+' µS/cm';
+$('c4').textContent=fmt(7.54+rnd(0.05),2)+' pH';$('c5').textContent=fmt(13.9+rnd(0.2),1)+' µS/cm';$('c6').textContent=fmt(16.0+rnd(0.3),1)+' ug/l';$('c7').textContent=fmt(0+rnd(0.05),1)+' µS/cm';
+$('pid3a').textContent=fmt(S.feed,2)+' m³/h';$('pid3b').textContent=fmt(S.feed,2)+' m³/h';
+$('pid2a').textContent=fmt(S.feed-S.steam,2)+' mm';$('pid2b').textContent=fmt(S.level,2)+' mm';
+$('pid1a').textContent=fmt(S.level,2)+' mm';$('pid1b').textContent=fmt(S.level,2)+' mm';
+if($('v33pct'))$('v33pct').textContent=Math.round(V.v33.pct)+'%';
+if($('v62pct'))$('v62pct').textContent=Math.round(V.v62.pct)+'%';
+if($('v61pct'))$('v61pct').textContent=Math.round(V.v61.pct)+'%';
+if($('v63pct'))$('v63pct').textContent=Math.round(V.v63.pct)+'%';
+$('s_pmed').textContent=fmt(S.pHP,2)+'bar g';$('s_p1').textContent=fmt(S.pHP,1)+'bar g';$('s_p2').textContent=fmt(S.pHP,1)+'bar g';$('s_p3').textContent=fmt(S.pHP,1)+'bar g';
+$('s_tmed').textContent=fmt(S.tSH,2)+'degC';$('s_t1').textContent=fmt(S.tSH,1)+'DegC';$('s_t2').textContent=fmt(S.tSH,1)+'DegC';$('s_t3').textContent=fmt(S.tSH,1)+'DegC';
+$('s_tm').textContent=fmt(S.tMid,2)+'degC';
+$('s_f1').textContent=fmt(totFlow*1.0,2)+'T/H';$('s_f2').textContent=fmt(totFlow*0.975,2)+'T/H';$('s_f3').textContent=fmt(totFlow,2)+'T/H';$('s_fmed').textContent=fmt(totFlow*0.998,2)+'T/H';
+$('s_h1').textContent=fmt(S.tH1,2)+'degC';$('s_h2').textContent=fmt(S.tH2,1)+'degC';$('s_hp').textContent=fmt(S.pH,2)+'bar g';$('s_h3').textContent=fmt(S.tH3,1)+'degC';$('s_h4').textContent=fmt(S.tH4,2)+'degC';
+$('s_feed').textContent=fmt(S.feedVD,3)+'T/H';
+$('s_lf1').textContent=fmt(S.feed,2)+'T/H';$('s_lf2').textContent=fmt(S.feed+0.3,2)+'T/H';$('s_lf3').textContent=fmt(S.feed-0.2,2)+'T/H';$('s_lfm').textContent=fmt(S.feed-0.3,2)+'T/H';
+$('s_c1').textContent=fmt(200+(exhT-450)*0.2+load*8,2)+'degC';$('s_c2').textContent=fmt(44+S.p*0.1,2)+'bar g';
+$('s_l1').textContent=fmt(90+S.feed*0.2,1)+'degC';$('s_l2').textContent=fmt(45+S.p*0.1,2)+'bar g';
+if($('w32pct'))$('w32pct').textContent=Math.round(V.w32.pct)+'%';
+if($('w33pct'))$('w33pct').textContent=Math.round(V.w33.pct)+'%';
+if($('w34pct'))$('w34pct').textContent=Math.round(V.w34.pct)+'%';
+if($('wE61pct'))$('wE61pct').textContent=Math.round(V.wE61.pct)+'%';
+try{var ku={src:'ku20',t:Date.now(),steam:S.steam,drumP:S.p,drumLevel:S.level,boilerTrip:S.trip,backP:(S.steam-55)*0.5,feed:S.feed};localStorage.setItem('ku20_live',JSON.stringify(ku));if(bc)bc.postMessage(ku);$('ku2h25').textContent='KU→H25: steam '+fmt(S.steam,1)+' T/H · P '+fmt(S.p,2)+' · L '+fmt(S.level,1)+(S.trip?' · TRIP':'');}catch(e){}
+},500);
+fitStage();
+</script>
+</body>
+</html>

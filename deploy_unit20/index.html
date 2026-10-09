@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UNIT-20: H25 + KU-20 — Simulyator</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,Helvetica,sans-serif;background:#0b0e11;color:#eee;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+.card{max-width:620px;width:100%;background:#141a20;border:1px solid #2a3542;border-radius:14px;padding:32px 28px;text-align:center}
+h1{font-size:22px;margin-bottom:6px}
+.sub{color:#9fb0c3;font-size:13px;margin-bottom:22px}
+.btn{display:block;width:100%;margin:10px 0;padding:14px;font-size:16px;font-weight:700;border-radius:10px;border:1px solid #333;cursor:pointer;text-decoration:none}
+.btn.h25{background:#0c2a0c;color:#7dff7d;border-color:#00c000}
+.btn.ku{background:#10233a;color:#7dc4ff;border-color:#1e90ff}
+.btn.both{background:#2a1e0c;color:#ffd97d;border-color:#c09000}
+.note{margin-top:18px;font-size:12px;color:#9fb0c3;line-height:1.6}
+code{background:#000;padding:2px 6px;border-radius:6px;color:#7dff7d}
+</style>
+</head>
+<body>
+<div class="card">
+<h1>UNIT-20: H25 gaz turbina + KU-20 qozon</h1>
+<div class="sub">BITTA agregat · JONLI bog'langan · brauzerda ishlaydi</div>
+<a class="btn h25" href="h25/index.html?link=1">H25 OCHISH — UNIT-20 (DIASYS, 19 ekran)</a>
+<a class="btn ku" href="ku/index.html">QOZON OCHISH — KU-20 PL3009 / PL3010</a>
+<a class="btn both" href="h25/index.html?link=1" onclick="window.open('ku/index.html','_blank');">IKKALASI (2 tabda ochish — jonli bog' uchun)</a>
+<div class="note">
+Jonli bog' uchun <b>IKKALASI</b> ni bosing — H25 va Qozon <b>bir brauzerda 2 tab</b> bo'lib ochiladi.<br>
+Bog': <code>BroadcastChannel('unit20')</code> + <code>localStorage</code> (bir sayt — bir origin).<br>
+Trener rejimi: <code>h25/index.html?trainer=1&link=1</code>
+</div>
+</div>
+</body>
+</html>

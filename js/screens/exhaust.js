@@ -1,0 +1,51 @@
+/* Screen 11 - EXHAUST. Pixel-measured overlays + live polar plot. */
+window.SCR_EXH = {
+  id: "exh",
+  bg: "ref/11_exhaust.png",
+  title: "11 EXHAUST",
+  nav: "EXHAUST",
+  navList: ["START-UP", "BEARING OIL", "EXHAUST", "VIBRATION", "WHEELSPACE", "MENU"],
+  values: [
+    ["TC01", 361, 24, 66, 13, 10, "degC"],
+    ["TC02", 465, 39, 65, 13, 9, "degC"],
+    ["TC03", 528, 78, 66, 13, 10, "degC"],
+    ["TC04", 578, 137, 65, 13, 10, "degC"],
+    ["TC05", 602, 210, 67, 14, 10, "degC"],
+    ["TC06", 602, 299, 66, 14, 9, "degC"],
+    ["TC07", 579, 373, 66, 13, 9, "degC"],
+    ["TC08", 527, 433, 66, 13, 10, "degC"],
+    ["TC09", 458, 471, 65, 13, 10, "degC"],
+    ["TC10", 366, 484, 65, 13, 10, "degC"],
+    ["TC11", 269, 471, 66, 14, 10, "degC"],
+    ["TC12", 189, 433, 66, 13, 10, "degC"],
+    ["TC13", 135, 373, 66, 13, 9, "degC"],
+    ["TC14", 103, 301, 66, 13, 9, "degC"],
+    ["TC15", 101, 211, 67, 13, 10, "degC"],
+    ["TC16", 134, 137, 65, 13, 10, "degC"],
+    ["TC17", 185, 79, 66, 13, 9, "degC"],
+    ["TC18", 269, 39, 65, 13, 10, "degC"],
+    ["FOFFD", 927, 57, 147, 17, 11, "FFD"],
+    ["SPEED", 927, 79, 147, 17, 11, "min-1"],
+    ["VIB_2BX", 927, 101, 147, 17, 11, "um"],
+    ["CPR_OUT_P", 927, 122, 147, 17, 11, "MPa"],
+    ["IGV_POS", 927, 143, 147, 17, 11, "degA"],
+    ["GEN_POWER", 927, 165, 147, 17, 11, "MW"],
+    ["GEN_MVAR", 927, 185, 147, 17, 11, "MVAR"],
+    ["GEN_PF", 927, 207, 147, 17, 11, "DPF"],
+    ["ALLOW_SPREAD", 927, 267, 147, 17, 11, "degC"],
+    ["SPREAD_1", 927, 288, 147, 17, 11, "degC"],
+    ["SPREAD_2", 927, 309, 147, 17, 11, "degC"],
+    ["EXH_SPREAD_3", 927, 331, 147, 17, 11, "degC"],
+    ["EXH_T", 927, 353, 147, 17, 11, "degC"],
+    ["EXH_REF_T", 927, 374, 147, 17, 11, "degC"],
+  ],
+  /* Polar canvas: markaz = fon halqalar markazi (o'lchangan).
+   * PAGE (388,260) = STAGE (388,284); R_tashqi = 184 (halqa 800).
+   * Canvas (183,55) 410x410, c=205 -> markaz (388,260). 2A. */
+  polar: {x:183, y:55, size:410, c:205, r:184},
+  buttons: [
+    {x:933, y:462, w:102, h:37, fs:10, label:"MASTER RESET", g:null, v:null, act:"reset"},
+    {x:1038, y:462, w:72, h:37, fs:11, label:"TRIP", g:null, v:null, act:"trip"},
+  ],
+  render: function (page) { renderOverlay(page, this); }
+};
