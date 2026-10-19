@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>H25 UNIT-20 — START-UP / original layout</title>
-<style>*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#a0a0a0;font-family:Arial,Helvetica,sans-serif}body{display:flex;flex-direction:column}#screen-holder{flex:1;min-height:0;display:flex;justify-content:center;align-items:flex-start;overflow:hidden}#hmi{display:block;flex:none;width:1280px;height:574px;user-select:none;touch-action:manipulation;background:#a0a0a0}#hmi text{font-family:Arial,Helvetica,sans-serif}#hmi .operator{cursor:pointer;outline:none}#hmi .operator:focus-visible>.focus-ring{stroke:#ffdf40;stroke-width:2;fill:none}#hmi .operator:active .button-face{fill:#b4b4b4}#hmi .operator[data-selected=true] .button-face{fill:#ffa500}#hmi .operator[data-readonly=true]{cursor:default}#hmi .data-value{font-weight:bold;fill:#000;dominant-baseline:central;text-anchor:middle}#hmi .static-label{fill:#e6e6e6}#tools{height:22px;flex:none;display:flex;align-items:center;gap:5px;background:#a0a0a0;color:#111;padding:0 7px;font-size:10px;white-space:nowrap}#tools #message{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis}#tools button{height:20px;min-width:30px;background:#c0c0c0;color:#000080;border:1px outset #fff;border-radius:0;font:10px Arial;padding:0 7px;cursor:pointer}#tools button:last-child{background:#c0c0c0;border-color:#777;font-size:15px}dialog{background:#c0c0c0;border:2px outset #fff;box-shadow:3px 3px #555;color:#111;max-width:95vw;padding:18px}dialog::backdrop{background:#0006}dialog h2{font-size:16px;background:#000080;color:white;margin:-14px -14px 20px;padding:5px}dialog input{width:90px;font:16px Arial}dialog button{font:12px Arial;padding:6px 16px;background:#c0c0c0;border:2px outset #fff;cursor:pointer}@media(max-width:700px){#message{display:none}#tools{justify-content:flex-end}}
+<style>*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#a0a0a0;font-family:Arial,Helvetica,sans-serif}body{display:flex;flex-direction:column}#screen-holder{flex:1;min-height:0;display:flex;justify-content:center;align-items:flex-start;overflow:hidden}#hmi{display:block;flex:none;width:1280px;height:559px;user-select:none;touch-action:manipulation;background:#a0a0a0}#hmi text{font-family:Arial,Helvetica,sans-serif}#hmi .operator{cursor:pointer;outline:none}#hmi .operator:focus-visible>.focus-ring{stroke:#ffdf40;stroke-width:2;fill:none}#hmi .operator:active .button-face{fill:#b4b4b4}#hmi .operator[data-selected=true] .button-face{fill:#ffa500}#hmi .operator[data-readonly=true]{cursor:default}#hmi .data-value{font-weight:bold;fill:#000;dominant-baseline:central;text-anchor:middle}#hmi .static-label{fill:#e6e6e6}#tools{height:22px;flex:none;display:flex;align-items:center;gap:5px;background:#a0a0a0;color:#111;padding:0 7px;font-size:10px;white-space:nowrap}#tools #message{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis}#tools button{height:20px;min-width:30px;background:#c0c0c0;color:#000080;border:1px outset #fff;border-radius:0;font:10px Arial;padding:0 7px;cursor:pointer}#tools button:last-child{background:#c0c0c0;border-color:#777;font-size:15px}dialog{background:#c0c0c0;border:2px outset #fff;box-shadow:3px 3px #555;color:#111;max-width:95vw;padding:18px}dialog::backdrop{background:#0006}dialog h2{font-size:16px;background:#000080;color:white;margin:-14px -14px 20px;padding:5px}dialog input{width:90px;font:16px Arial}dialog button{font:12px Arial;padding:6px 16px;background:#c0c0c0;border:2px outset #fff;cursor:pointer}@media(max-width:700px){#message{display:none}#tools{justify-content:flex-end}}
 /* Preview instrumentation stays outside the original HMI and is hidden in the acceptance frame. */
 #live-button{display:none}#tools #message{opacity:0}
 #command-feedback{position:fixed;z-index:9;bottom:25px;left:50%;transform:translateX(-50%);width:max-content;max-width:92vw;padding:7px 12px;border:1px solid #222;box-shadow:1px 1px #555;background:#ffffcd;color:#111;font:12px Arial;white-space:normal;pointer-events:none}#command-feedback[data-error=true]{background:#ffe0d5;color:#900}#command-feedback[hidden]{display:none}#cal-dialog{max-width:440px}#cal-input{width:220px;max-width:60vw}#cal-output{display:inline-block;min-width:60px;margin-left:8px}
@@ -11,7 +11,7 @@
 </head>
 <body>
 <main id="screen-holder" aria-label="H25 UNIT-20 START-UP">
-<svg id="hmi" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 574" preserveAspectRatio="none" role="group" aria-label="H25 Gas Turbine Generator UNIT-20 START-UP, native vector recreation"></svg>
+<svg id="hmi" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 559" preserveAspectRatio="none" role="group" aria-label="H25 Gas Turbine Generator UNIT-20 START-UP, native vector recreation"></svg>
 </main>
 <footer id="tools"><span id="message" role="status">START-UP · векторная перерисовка исходной компоновки · эталонные показания</span><button id="live-button" title="Включить или приостановить учебную модель">▶ СИМУЛЯЦИЯ</button><button id="full-button">⛶ TO‘LIQ EKRAN</button><button id="sound-button" aria-pressed="false" title="Звук аварии">🔇</button></footer>
 <dialog id="load-dialog"><form id="load-form"><h2>Load Set Value</h2><label>Load setpoint <input id="load-input" type="number" min="0" max="32" step="0.1" required> MW</label><p><button type="button" id="load-apply">ENTER</button><button type="button" id="load-cancel">CANCEL</button></p></form></dialog>
@@ -3083,7 +3083,7 @@ for(const a of s.lamptexts||[]){rect(a.x,a.y+P,a.w,a.h,'#c0c0c0','#333',1,`data-
 for(const a of s.syms||[])breaker(a.x,a.y+P,a.w,a.h,a.id==='sym41'?'41':a.id==='sym52G'?'52G':'52L');
 // Secondary views use their original shorter selectors; MENU exposes every page.
 (s.navList||[]).forEach((name,i)=>{const key=Object.keys(screens).find(k=>screens[k].nav.replace(/\s/g,'')===name.replace(/\s/g,''))||'menu';const y=(id==='os'?271:30)+i*21.5;const fill=key===id?'#fff':key==='menu'?'#000080':['sc','tim','tripm','dr1','dr2','os'].includes(key)?'#39baba':'#4682b4';add(`<g class="operator" role="button" tabindex="0" data-nav="${i}" data-target="${key}" aria-label="${escape(name)}">`);bevel(1115,y,94,21,fill,'#111','#eee');text(1162,y+13,name,name.length>15?7:9,key===id?'#111':'#eee','middle');rect(1116,y+1,92,19,'none',null,1,'class="focus-ring"');add('</g>');});
-add(c.startupMarkup.slice(c.startupMarkup.indexOf('<rect x="0" y="559"')));text(481,569,s.title,8,'#111');
+// Bottom screen-tab strip removed at the operator's request.
 }
 function update(svg,id,H){
  svg.querySelectorAll('[data-bar]').forEach(el=>{const max=Number(el.dataset.max),span=Number(el.dataset.span),height=Math.min(span,Math.max(0,Number(H.tags[el.dataset.bar])||0)/max*span);el.setAttribute('height',height);el.setAttribute('y',Number(el.dataset.baseline)-height);});
@@ -3212,11 +3212,6 @@ add(`<rect x="${load.x}" y="${load.y+P}" width="${load.w}" height="${load.h}" fi
 // Original right-hand screen selector: fixed grid, no layout reflow.
 const nav=['START-UP','FFD CONTROL','SYNCHRO. &EXC. OPE.','FUEL GAS','LUBE OIL','GENERATOR','VENTILATION','IBH CONTROL','MOTORS','BEARING OIL','EXHAUST','VIBRATION','WHEEL SPACE','START CHECK','TIMERS','TRIP MONITOR','DATA REPORT 1','DATA REPORT 2','OVERSPEED'];
 nav.forEach((s,i)=>{const y=30+i*21.5,fill=i===0?'#fff':i>=13?'#39baba':i>=9?'#000080':'#4682b4';add(`<g class="operator" role="button" tabindex="0" data-nav="${i}" aria-label="${escape(s)}">`);bevel(1115,y,94,21,fill,'#111','#eee',1);text(1162,y+13,s,i===2?7:9,i===0?'#222':'#e9eeee','middle');rect(1116,y+1,92,19,'none',null,1,'class="focus-ring"');add('</g>');});
-// The bottom reference screen-tab strip is also native, not a captured OS taskbar.
-rect(0,559,1280,15,'#d8d8d8');line(0,559,1280,559,'#f0f0f0',1);
-for(const x of [2,158,314,468,623,778,934,1090,1277]){line(x,560,x,572,'#f7f7f7',1);line(x+1,561,x+1,572,'#aaa',.7);}
-function tabIcon(x){rect(x,563,5,6,'#fff');rect(x,563,3,3,'#000080');rect(x+3,566,3,3,'#17831b');line(x,569,x+6,569,'#000',1);}
-tabIcon(3);text(12,569,'A',7,'#111');tabIcon(161);text(170,569,'6 GENERATOR',8,'#111');tabIcon(317);text(326,569,'1 START-UP',8,'#111');
 const startupMarkup=parts.join('');
 svg.innerHTML=startupMarkup;
 // Original reference state is deliberate for the first visual acceptance frame.
@@ -3280,8 +3275,7 @@ function bindControls(){
   else {el.addEventListener('click',()=>act(el));el.addEventListener('keydown',e=>{if(e.code==='Space'||e.code==='Enter'){e.preventDefault();act(el);}});}
  });
  svg.querySelectorAll('[data-nav]').forEach(el=>{const action=()=>navigate(el.dataset.target||navIDs[Number(el.dataset.nav)]);el.addEventListener('click',action);el.addEventListener('keydown',e=>{if(e.code==='Space'||e.key==='Enter'){e.preventDefault();action();}});});
- // Original taskbar tabs are working navigation too.
- const tabs=[['menu',0,156],['gen',158,156],['startup',314,154]];for(const[id,x,w]of tabs){const r=document.createElementNS(NS,'rect');r.setAttribute('x',x);r.setAttribute('y',559);r.setAttribute('width',w);r.setAttribute('height',15);r.setAttribute('fill','transparent');r.setAttribute('role','button');r.setAttribute('tabindex','0');r.setAttribute('class','operator');r.setAttribute('aria-label',id==='menu'?'MENU':id.toUpperCase());r.onclick=()=>navigate(id);r.onkeydown=e=>{if(e.key==='Enter'||e.code==='Space'){e.preventDefault();navigate(id);}};svg.appendChild(r);}
+
 }
 function navigate(id,fromHash=false){
  if(!screens[id])id='startup';stopJog();current=id;parts=[];

@@ -126,7 +126,7 @@ for(const a of s.lamptexts||[]){rect(a.x,a.y+P,a.w,a.h,'#c0c0c0','#333',1,`data-
 for(const a of s.syms||[])breaker(a.x,a.y+P,a.w,a.h,a.id==='sym41'?'41':a.id==='sym52G'?'52G':'52L');
 // Secondary views use their original shorter selectors; MENU exposes every page.
 (s.navList||[]).forEach((name,i)=>{const key=Object.keys(screens).find(k=>screens[k].nav.replace(/\s/g,'')===name.replace(/\s/g,''))||'menu';const y=(id==='os'?271:30)+i*21.5;const fill=key===id?'#fff':key==='menu'?'#000080':['sc','tim','tripm','dr1','dr2','os'].includes(key)?'#39baba':'#4682b4';add(`<g class="operator" role="button" tabindex="0" data-nav="${i}" data-target="${key}" aria-label="${escape(name)}">`);bevel(1115,y,94,21,fill,'#111','#eee');text(1162,y+13,name,name.length>15?7:9,key===id?'#111':'#eee','middle');rect(1116,y+1,92,19,'none',null,1,'class="focus-ring"');add('</g>');});
-add(c.startupMarkup.slice(c.startupMarkup.indexOf('<rect x="0" y="559"')));text(481,569,s.title,8,'#111');
+// Bottom screen-tab strip removed at the operator's request.
 }
 function update(svg,id,H){
  svg.querySelectorAll('[data-bar]').forEach(el=>{const max=Number(el.dataset.max),span=Number(el.dataset.span),height=Math.min(span,Math.max(0,Number(H.tags[el.dataset.bar])||0)/max*span);el.setAttribute('height',height);el.setAttribute('y',Number(el.dataset.baseline)-height);});

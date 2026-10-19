@@ -104,11 +104,6 @@ add(`<rect x="${load.x}" y="${load.y+P}" width="${load.w}" height="${load.h}" fi
 // Original right-hand screen selector: fixed grid, no layout reflow.
 const nav=['START-UP','FFD CONTROL','SYNCHRO. &EXC. OPE.','FUEL GAS','LUBE OIL','GENERATOR','VENTILATION','IBH CONTROL','MOTORS','BEARING OIL','EXHAUST','VIBRATION','WHEEL SPACE','START CHECK','TIMERS','TRIP MONITOR','DATA REPORT 1','DATA REPORT 2','OVERSPEED'];
 nav.forEach((s,i)=>{const y=30+i*21.5,fill=i===0?'#fff':i>=13?'#39baba':i>=9?'#000080':'#4682b4';add(`<g class="operator" role="button" tabindex="0" data-nav="${i}" aria-label="${escape(s)}">`);bevel(1115,y,94,21,fill,'#111','#eee',1);text(1162,y+13,s,i===2?7:9,i===0?'#222':'#e9eeee','middle');rect(1116,y+1,92,19,'none',null,1,'class="focus-ring"');add('</g>');});
-// The bottom reference screen-tab strip is also native, not a captured OS taskbar.
-rect(0,559,1280,15,'#d8d8d8');line(0,559,1280,559,'#f0f0f0',1);
-for(const x of [2,158,314,468,623,778,934,1090,1277]){line(x,560,x,572,'#f7f7f7',1);line(x+1,561,x+1,572,'#aaa',.7);}
-function tabIcon(x){rect(x,563,5,6,'#fff');rect(x,563,3,3,'#000080');rect(x+3,566,3,3,'#17831b');line(x,569,x+6,569,'#000',1);}
-tabIcon(3);text(12,569,'A',7,'#111');tabIcon(161);text(170,569,'6 GENERATOR',8,'#111');tabIcon(317);text(326,569,'1 START-UP',8,'#111');
 const startupMarkup=parts.join('');
 svg.innerHTML=startupMarkup;
 // Original reference state is deliberate for the first visual acceptance frame.
@@ -172,8 +167,7 @@ function bindControls(){
   else {el.addEventListener('click',()=>act(el));el.addEventListener('keydown',e=>{if(e.code==='Space'||e.code==='Enter'){e.preventDefault();act(el);}});}
  });
  svg.querySelectorAll('[data-nav]').forEach(el=>{const action=()=>navigate(el.dataset.target||navIDs[Number(el.dataset.nav)]);el.addEventListener('click',action);el.addEventListener('keydown',e=>{if(e.code==='Space'||e.key==='Enter'){e.preventDefault();action();}});});
- // Original taskbar tabs are working navigation too.
- const tabs=[['menu',0,156],['gen',158,156],['startup',314,154]];for(const[id,x,w]of tabs){const r=document.createElementNS(NS,'rect');r.setAttribute('x',x);r.setAttribute('y',559);r.setAttribute('width',w);r.setAttribute('height',15);r.setAttribute('fill','transparent');r.setAttribute('role','button');r.setAttribute('tabindex','0');r.setAttribute('class','operator');r.setAttribute('aria-label',id==='menu'?'MENU':id.toUpperCase());r.onclick=()=>navigate(id);r.onkeydown=e=>{if(e.key==='Enter'||e.code==='Space'){e.preventDefault();navigate(id);}};svg.appendChild(r);}
+
 }
 function navigate(id,fromHash=false){
  if(!screens[id])id='startup';stopJog();current=id;parts=[];

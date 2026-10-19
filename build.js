@@ -37,6 +37,7 @@ fs.writeFileSync(
       version: require('./package.json').version,
       renderer: 'native-original-layout-svg',
       layout: 'fill-viewport',
+      bottomScreenTabs: false,
       f24: 'white when FFD < live KD4H; independent SVG sector',
       sources: 'exact-startup/ + js/engine.js',
       model: 'educational, not OEM certified',
