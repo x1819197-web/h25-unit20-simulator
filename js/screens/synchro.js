@@ -1,7 +1,6 @@
-/* Screen 3 - SYNCHRO. &EXC. OPE. Pixel-measured overlays. */
+/* Native view metadata. Legacy measurement coordinates retained for tag inventory only; not used for layout. */
 window.SCR_SYNC = {
   id: "sync",
-  bg: "ref/03_synchro_exc.png",
   title: "3 SYNCHRO. &EXC. OPE.",
   nav: "SYNCHRO. &EXC. OPE.",
   navList: ["START-UP", "FFD CONTROL", "SYNCHRO. &EXC. OPE.", "FUEL GAS", "LUBE OIL", "GENERATOR", "VENTILATION", "IBH CONTROL", "MOTORS", "MENU"],
@@ -67,5 +66,4 @@ window.SCR_SYNC = {
     {x:391, y:197, w:21, h:29, id:"sym52G"},
     {x:546, y:255, w:21, h:32, id:"sym41"},
   ],
-  render: function (page) { renderOverlay(page, this); }
 };

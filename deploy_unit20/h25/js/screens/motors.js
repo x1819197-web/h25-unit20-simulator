@@ -1,7 +1,6 @@
-/* Screen 9 - MOTORS. Pixel-measured overlays. */
+/* Native view metadata. Legacy measurement coordinates retained for tag inventory only; not used for layout. */
 window.SCR_MOTORS = {
   id: "motors",
-  bg: "ref/09_motors.png",
   title: "9 MOTORS",
   nav: "MOTORS",
   navList: ["START-UP", "FFD CONTROL", "SYNCHRO. &EXC. OPE.", "FUEL GAS", "LUBE OIL", "GENERATOR", "VENTILATION", "IBH CONTROL", "MOTORS", "MENU"],
@@ -86,15 +85,14 @@ window.SCR_MOTORS = {
     {motor:"gfc2", kind:"manual", x:351, y:482, w:78, h:13, fs:10},
     {motor:"gfc2", kind:"start", x:351, y:497, w:78, h:13, fs:10},
     {motor:"gfc2", kind:"stop", x:351, y:512, w:78, h:13, fs:10},
-    {motor:"gfc3", kind:"run", x:469, y:422, w:78, h:13, fs:10},
-    {motor:"gfc3", kind:"auto", x:469, y:467, w:78, h:13, fs:10},
-    {motor:"gfc3", kind:"manual", x:469, y:482, w:78, h:13, fs:10},
-    {motor:"gfc3", kind:"start", x:469, y:497, w:78, h:13, fs:10},
-    {motor:"gfc3", kind:"stop", x:469, y:512, w:78, h:13, fs:10},
+    {motor:"gfc3", kind:"run", x:455, y:422, w:78, h:13, fs:10},
+    {motor:"gfc3", kind:"auto", x:455, y:467, w:78, h:13, fs:10},
+    {motor:"gfc3", kind:"manual", x:455, y:482, w:78, h:13, fs:10},
+    {motor:"gfc3", kind:"start", x:455, y:497, w:78, h:13, fs:10},
+    {motor:"gfc3", kind:"stop", x:455, y:512, w:78, h:13, fs:10},
   ],
   buttons: [
     {x:933, y:462, w:102, h:37, fs:10, label:"MASTER RESET", g:null, v:null, act:"reset"},
     {x:1038, y:462, w:72, h:37, fs:11, label:"TRIP", g:null, v:null, act:"trip"},
   ],
-  render: function (page) { renderOverlay(page, this); }
 };

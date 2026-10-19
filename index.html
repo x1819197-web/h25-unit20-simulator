@@ -1,46 +1,156 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>DIASYS Netmation [Operator] — H25 GAS TURBINE GENERATOR UNIT-20</title>
-<link rel="stylesheet" href="css/diasys.css?v=35">
-</head>
-<body>
-<div id="viewport">
-<div id="stage">
-  <img id="refbg" src="ref/01_startup.png" alt="">
-  <div id="body"><div id="page"></div></div>
-  <div id="navzones"></div>
-</div>
-</div>
-<script src="js/config.js?v=35"></script>
-<script src="js/rng.js?v=35"></script>
-<script src="js/exhaust-math.js?v=35"></script>
-<script src="js/tags.js?v=35"></script>
-<script src="js/engine.js?v=35"></script>
-<script src="js/unit20-link.js?v=35"></script>
-<script src="js/alarm.js?v=1"></script>
-<script src="js/screens/startup.js?v=35"></script>
-<script src="js/screens/ffd.js?v=35"></script>
-<script src="js/screens/synchro.js?v=35"></script>
-<script src="js/screens/fuelgas.js?v=35"></script>
-<script src="js/screens/lubeoil.js?v=35"></script>
-<script src="js/screens/generator.js?v=35"></script>
-<script src="js/screens/vent.js?v=35"></script>
-<script src="js/screens/ibh.js?v=35"></script>
-<script src="js/screens/motors.js?v=35"></script>
-<script src="js/screens/bearing.js?v=35"></script>
-<script src="js/screens/exhaust.js?v=35"></script>
-<script src="js/screens/vib.js?v=35"></script>
-<script src="js/screens/wheel.js?v=35"></script>
-<script src="js/screens/startcheck.js?v=35"></script>
-<script src="js/screens/timers.js?v=35"></script>
-<script src="js/screens/tripmon.js?v=35"></script>
-<script src="js/screens/datarep1.js?v=35"></script>
-<script src="js/screens/datarep2.js?v=35"></script>
-<script src="js/screens/overspeed.js?v=35"></script>
-<script src="js/screens/menu.js?v=35"></script>
-<script src="js/selftest.js?v=35"></script>
-<script src="js/app.js?v=35"></script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>UNIT-20 · H25 Native HMI</title>
+    <link rel="stylesheet" href="css/diasys.css?v=3.0.0" />
+  </head>
+  <body>
+    <div id="app">
+      <header class="topbar">
+        <div class="brand">
+          UNIT-20 <small>H25 GAS TURBINE · NATIVE HMI</small>
+        </div>
+        <span class="model-badge">TRAINING MODEL / v3.0</span
+        ><span class="spacer"></span
+        ><a href="../ku/index.html" id="ku-link">KU-20 ↗</a
+        ><button id="events-button">EVENT LOG</button
+        ><button id="trainer-button" aria-pressed="false">INSTRUCTOR</button
+        ><button id="sndbtn" aria-pressed="true">SOUND ON</button
+        ><button id="fsbtn">FULLSCREEN</button>
+      </header>
+      <section class="kpis" aria-label="Live unit overview">
+        <div class="kpi">
+          <label>ACTIVE POWER</label
+          ><span class="number" data-tag="GEN_POWER">—</span
+          ><span class="unit">MW</span>
+        </div>
+        <div class="kpi">
+          <label>TURBINE SPEED</label
+          ><span class="number" data-tag="SPEED">—</span
+          ><span class="unit">rpm</span>
+        </div>
+        <div class="kpi">
+          <label>EXHAUST MEAN</label
+          ><span class="number" data-tag="EXH_T">—</span
+          ><span class="unit">°C</span>
+        </div>
+        <div class="kpi">
+          <label>FUEL DEMAND</label
+          ><span class="number" data-tag="FOFFD">—</span
+          ><span class="unit">FFD</span>
+        </div>
+        <div class="kpi">
+          <label>LOAD SETPOINT</label
+          ><span class="number" data-tag="LOAD_SET">—</span
+          ><span class="unit">MW</span>
+        </div>
+        <div class="kpi status">
+          <label>UNIT STATE</label><span class="number" id="gt-state">—</span>
+        </div>
+      </section>
+      <div class="workspace">
+        <aside class="sidebar">
+          <h2>OPERATOR DISPLAYS</h2>
+          <nav id="navigation"></nav>
+          <div class="bottom-link">
+            NATIVE SVG / HTML<br />No screenshot overlays
+          </div>
+        </aside>
+        <main class="main">
+          <div class="screen-head">
+            <div>
+              <div class="eyebrow" id="screen-number">H25 / 01</div>
+              <h1 id="screen-title">START-UP</h1>
+            </div>
+            <select
+              class="mobile-nav"
+              id="screen-select"
+              aria-label="Select operator display"
+            ></select>
+            <div class="screen-meta">
+              DIASYS-STYLE TRAINING INTERFACE<br /><span id="breaker-state"
+                >—</span
+              >
+            </div>
+          </div>
+          <div id="trip-banner" class="alarm-banner" role="alert" hidden>
+            <strong>FIRST-OUT TRIP</strong><span id="trip-cause"></span>
+          </div>
+          <div id="page" class="screen-content"></div>
+          <div class="action-bar">
+            <span class="message" id="command-message" aria-live="polite"
+              >Educational model. OEM settings and dynamics require
+              verification.</span
+            ><button id="pause-button">PAUSE</button
+            ><button id="reset-button">MASTER RESET</button
+            ><button id="trip-button" class="danger">EMERGENCY TRIP</button>
+          </div>
+        </main>
+      </div>
+      <section
+        id="trainer"
+        class="trainer"
+        hidden
+        aria-label="Instructor controls"
+      >
+        <strong>INSTRUCTOR</strong
+        ><button id="cold-button">COLD / STOPPED</button
+        ><button id="demo-button">BASE-LOAD DEMO</button
+        ><button data-fault="vib">High vibration</button
+        ><button data-fault="exh">Overtemperature</button
+        ><button data-fault="lube">Lube leak</button
+        ><button data-fault="fuel">Fuel pressure low</button
+        ><button id="clear-faults">REMOVE FAULTS</button
+        ><span class="trip-text" id="trainer-trip"></span>
+      </section>
+      <footer class="footer">
+        <span>UNIT-20 / v3.0.0</span><span id="link-quality">KU LINK OFF</span
+        ><span class="spacer"></span><span>Background tab: physics paused</span
+        ><span id="sim-clock">0.0 s</span>
+      </footer>
+    </div>
+    <dialog id="events-dialog">
+      <div class="dialog-head">
+        <h2>Sequence of events</h2>
+        <button id="events-close">CLOSE</button>
+      </div>
+      <div id="events-body" class="dialog-body"></div>
+    </dialog>
+    <script src="js/config.js?v=3.0.0"></script>
+    <script src="js/rng.js?v=3.0.0"></script>
+    <script src="js/exhaust-math.js?v=3.0.0"></script>
+    <script src="js/tags.js?v=3.0.0"></script>
+    <script src="js/engine.js?v=3.0.0"></script>
+    <script src="js/unit20-link.js?v=3.0.0"></script>
+    <script src="js/screens/startup.js?v=3.0.0"></script>
+    <script src="js/screens/ffd.js?v=3.0.0"></script>
+    <script src="js/screens/synchro.js?v=3.0.0"></script>
+    <script src="js/screens/fuelgas.js?v=3.0.0"></script>
+    <script src="js/screens/lubeoil.js?v=3.0.0"></script>
+    <script src="js/screens/generator.js?v=3.0.0"></script>
+    <script src="js/screens/vent.js?v=3.0.0"></script>
+    <script src="js/screens/ibh.js?v=3.0.0"></script>
+    <script src="js/screens/motors.js?v=3.0.0"></script>
+    <script src="js/screens/bearing.js?v=3.0.0"></script>
+    <script src="js/screens/exhaust.js?v=3.0.0"></script>
+    <script src="js/screens/vib.js?v=3.0.0"></script>
+    <script src="js/screens/wheel.js?v=3.0.0"></script>
+    <script src="js/screens/startcheck.js?v=3.0.0"></script>
+    <script src="js/screens/timers.js?v=3.0.0"></script>
+    <script src="js/screens/tripmon.js?v=3.0.0"></script>
+    <script src="js/screens/datarep1.js?v=3.0.0"></script>
+    <script src="js/screens/datarep2.js?v=3.0.0"></script>
+    <script src="js/screens/overspeed.js?v=3.0.0"></script>
+    <script src="js/screens/menu.js?v=3.0.0"></script>
+    <script src="js/app.js?v=3.0.0"></script>
+    <script>
+      document.getElementById('ku-link').href = location.pathname.includes(
+        '/h25/',
+      )
+        ? '../ku/index.html'
+        : 'ku/index.html';
+    </script>
+  </body>
 </html>

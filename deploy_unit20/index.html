@@ -1,35 +1,125 @@
-<!DOCTYPE html>
-<html lang="uz">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>UNIT-20: H25 + KU-20 — Simulyator</title>
-<style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:Arial,Helvetica,sans-serif;background:#0b0e11;color:#eee;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
-.card{max-width:620px;width:100%;background:#141a20;border:1px solid #2a3542;border-radius:14px;padding:32px 28px;text-align:center}
-h1{font-size:22px;margin-bottom:6px}
-.sub{color:#9fb0c3;font-size:13px;margin-bottom:22px}
-.btn{display:block;width:100%;margin:10px 0;padding:14px;font-size:16px;font-weight:700;border-radius:10px;border:1px solid #333;cursor:pointer;text-decoration:none}
-.btn.h25{background:#0c2a0c;color:#7dff7d;border-color:#00c000}
-.btn.ku{background:#10233a;color:#7dc4ff;border-color:#1e90ff}
-.btn.both{background:#2a1e0c;color:#ffd97d;border-color:#c09000}
-.note{margin-top:18px;font-size:12px;color:#9fb0c3;line-height:1.6}
-code{background:#000;padding:2px 6px;border-radius:6px;color:#7dff7d}
-</style>
-</head>
-<body>
-<div class="card">
-<h1>UNIT-20: H25 gaz turbina + KU-20 qozon</h1>
-<div class="sub">BITTA agregat · JONLI bog'langan · brauzerda ishlaydi</div>
-<a class="btn h25" href="h25/index.html?link=1">H25 OCHISH — UNIT-20 (DIASYS, 19 ekran)</a>
-<a class="btn ku" href="ku/index.html">QOZON OCHISH — KU-20 PL3009 / PL3010</a>
-<a class="btn both" href="h25/index.html?link=1" onclick="window.open('ku/index.html','_blank');">IKKALASI (2 tabda ochish — jonli bog' uchun)</a>
-<div class="note">
-Jonli bog' uchun <b>IKKALASI</b> ni bosing — H25 va Qozon <b>bir brauzerda 2 tab</b> bo'lib ochiladi.<br>
-Bog': <code>BroadcastChannel('unit20')</code> + <code>localStorage</code> (bir sayt — bir origin).<br>
-Trener rejimi: <code>h25/index.html?trainer=1&link=1</code>
-</div>
-</div>
-</body>
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>UNIT-20 · H25 + KU-20</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: #e0e8ef;
+        color: #17334d;
+        font:
+          15px/1.6 Arial,
+          sans-serif;
+        min-height: 100dvh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+      }
+      main {
+        max-width: 650px;
+        width: 100%;
+        background: #f9fbfd;
+        border: 1px solid #9eb2c4;
+        border-top: 7px solid #245c8e;
+        padding: 36px;
+        border-radius: 5px;
+      }
+      h1 {
+        margin: 0;
+        font-size: 30px;
+      }
+      small {
+        color: #5b778e;
+        letter-spacing: 2px;
+      }
+      p {
+        color: #557086;
+      }
+      a,
+      button {
+        display: block;
+        text-align: left;
+        width: 100%;
+        border: 1px solid #9fb4c6;
+        border-radius: 3px;
+        background: #e6eef5;
+        color: #1c4f7c;
+        padding: 15px;
+        margin: 12px 0;
+        text-decoration: none;
+        font: 600 15px Arial;
+        cursor: pointer;
+      }
+      a:hover,
+      button:hover {
+        background: #d3e5f4;
+      }
+      .primary {
+        background: #205e94;
+        color: white;
+      }
+      footer {
+        font-size: 12px;
+        color: #6b7f90;
+        margin-top: 24px;
+      }
+      .note {
+        background: #fff5df;
+        border: 1px solid #dfc894;
+        padding: 12px;
+        font-size: 12px;
+      }
+      code {
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <small>NATIVE SVG / HTML · VERSION 3.0</small>
+      <h1>UNIT-20</h1>
+      <p>
+        Газовая турбина H25 и котёл-утилизатор КУ-20.<br />Живые схемы и
+        элементы — без фотографий интерфейса.
+      </p>
+      <a class="primary" id="gt" href="h25/index.html?link=1"
+        >H25 · Операторские экраны →</a
+      ><a href="ku/index.html">КУ-20 · PL3009 / PL3010 →</a
+      ><button id="both">Открыть агрегат в двух окнах ↗</button
+      ><a id="trainer" href="h25/index.html?trainer=1&link=1"
+        >Режим инструктора →</a
+      >
+      <div class="note">
+        Для одновременной работы используйте два видимых окна рядом. В скрытой
+        вкладке физика приостанавливается. Связь требует одного HTTP-origin;
+        открытие через file:// не поддерживается для связанного режима.
+      </div>
+      <footer>
+        Учебная модель, не сертифицированный тренажёр OEM.<br />Все коэффициенты
+        и уставки требуют инженерной верификации.
+      </footer>
+    </main>
+    <script>
+      var source =
+        !location.pathname.includes('deploy_unit20') &&
+        location.pathname.endsWith('unit20.html');
+      var gt = source ? 'index.html' : 'h25/index.html';
+      document.getElementById('gt').href = gt + '?link=1';
+      document.getElementById('trainer').href = gt + '?trainer=1&link=1';
+      document.getElementById('both').onclick = function () {
+        var w = window.open(
+          'ku/index.html',
+          'unit20-ku',
+          'width=1000,height=800',
+        );
+        if (!w) alert('Разрешите всплывающие окна или откройте КУ-20 вручную.');
+        location.href = gt + '?link=1';
+      };
+    </script>
+  </body>
 </html>

@@ -1,56 +1,147 @@
-# H25 Gas Turbine Generator — UNIT-20 | DIASYS Netmation SCADA Simulator
+# UNIT-20 — native H25 + KU-20 simulator v3.0
 
-Browser-based, real-time 1:1 HMI replica of the Hitachi H25 gas turbine
-generator SCADA system ("DIASYS Netmation [Operator]", UNIT-20).
+Новая рабочая версия с **HTML/SVG-интерфейсом без фотографий-подложек**. 19 экранов H25 + MENU и два экрана котла PL3009/PL3010. SCADA-стиль сохранён, компоновка переработана; это **не пиксельная копия оригинального DIASYS**.
 
-Zero-dependency — open `index.html` in any modern browser.
-Offline dastur: `dist/H25-Simulator.exe` ni ikki marta bosing — internet
-shart emas, brauzer shart emas. O'z app-oynasida ochiladi (WebView2),
-server avtomatik ko'tariladi, oyna yopilsa to'xtaydi.
-Noutbukni ochdingiz → dasturga kirdingiz → simulyatsiyani ishlatdingiz.
+> Учебная модель, не сертифицированный OEM-тренажёр. Физические коэффициенты, защиты и отдельные функции упрощены. Нельзя использовать для управления реальной установкой или подтверждения квалификации без инженерной верификации.
 
-## Ishga tushirish (3 usul)
+## Быстрый запуск
 
-1. EXE (tavsiya, offline): `dist/H25-Simulator.exe` — OCHISH (oddiy ekran) /
-   TRENER (nosozlik paneli bilan). App-oyna maximized ochiladi; ichida
-   F / double-click / TO'LIQ EKRAN tugmasi bilan fullscreen.
-   WebView2 topilmasa avtomatik Chrome/Edge app-rejimiga o'tadi
-   (baribir offline — faqat `127.0.0.1` server ishlatiladi).
-2. Brauzer: `index.html` ni Chrome/Edge da oching.
-3. Trener rejimi: `index.html?trainer=1` — pastda fault-injection paneli
-   chiqadi (High vibration / Exhaust overtemp / Lube-oil leak / Fuel-gas low
-   + Clear + Reset). Oldindan tanlash: `?fault=vib,exh,lube,fuel`.
+Нужны Python 3 и современный браузер. Готовая web-сборка уже находится в `deploy_unit20/`.
 
-## Structure
+```bash
+python -m http.server 8000 --directory deploy_unit20
+```
 
-- `index.html` — global frame (menu, annunciator, nav, taskbar, 1280x720 stage)
-- `css/diasys.css` — DIASYS classic styles
-- `js/tags.js` — central tag database (every number on every screen)
-- `js/engine.js` — simulation (500 ms tick, GT state machine, noise)
-- `js/screens/*.js` — one file per screen (19 SCADA + MENU) + live buttons
-- `js/app.js` — frame glue (scaler, clock, nav, button highlights, MENU unite)
+Откройте **http://localhost:8000/**. В Windows также можно запустить `START-WEB.bat` (требуется установленный Python).
 
-## Screens (19)
+Для разработки из исходников:
 
-START-UP (done) · FFD CONTROL · SYNCHRO & EXC OPE · FUEL GAS · LUBE OIL ·
-GENERATOR · VENTILATION · IBH CONTROL · MOTORS · BEARING OIL · EXHAUST ·
-VIBRATION · WHEEL SPACE · START CHECK · TIMERS · TRIP MONITOR ·
-DATA REPORT 1 · DATA REPORT 2 · OVERSPEED
-plus unified MENU (all screens in one list — every sidebar MENU opens it).
+```bash
+npm ci
+npm test
+npm run build
+python -m http.server 8000
+```
 
-## Controls on START-UP
+Адреса исходной версии:
 
-Master Control Location (REMOTE/LOCAL) · Cooldown Control (ON/OFF) ·
-Master Control Mode (OFF/CRANK/FIRE/AUTO) · Master Control (START/STOP,
-START runs the startup sequence) · Speed/Load Control (AUTO/MANUAL,
-RAISE/LOWER jogs Load Set) · Load Control (BASE/PRE SELECT) ·
-Load Set Value (click to edit, 0–32 MW) · MASTER RESET · TRIP.
+- `/index.html` — H25;
+- `/index.html?cold=1&trainer=1` — остановленный агрегат с панелью инструктора;
+- `/ku/index.html` — котёл;
+- `/unit20.html` — стартовая страница агрегата.
 
-## Avariya ssenariylari (trener)
+Открытие отдельных HTML через `file://` не рекомендуется: связанный режим требует одного HTTP-origin.
 
-- High vibration → VIB_2BX 155 um / 3 s da `39VTX` trip (TRIP MONITOR qizaradi).
-- Exhaust overtemp → EXH_REF+22 °C da `66TXT` trip, 18 ta TC ko'tariladi.
-- Lube-oil leak → LO_HDR_P 0.059 MPa da `63QTX` (LUBE OIL PRESS LOW) trip.
-- Fuel-gas low → P1_PRESS 2.38 MPa / 15 s da `63FGLT` trip, quvvat tushadi.
-- Manual TRIP (har ekranda) → `9EX`; Overspeed test (19-ekran) → `12H`/`12H_P`.
-- MASTER RESET hamma trip + nosozlikni tozalaydi (Ready to Start).
+## Как пользоваться
+
+H25 открывается в демонстрационном режиме базовой нагрузки.
+
+1. **INSTRUCTOR → COLD / STOPPED** загружает остановленный сценарий.
+2. Выберите **AUTO**, нажмите **START**. Пуск ускорен для учебной демонстрации (около 32 секунд).
+3. **STOP** отменяет пуск на любой стадии и переводит агрегат на выбег.
+4. **EMERGENCY TRIP** фиксирует первопричину, открывает 52G и отключает топливо/отдаваемую мощность.
+5. **MASTER RESET** доступен после удаления fault-входов и снижения скорости ниже 500 rpm. Он **не запускает установку**.
+6. **BASE-LOAD DEMO** — отдельная загрузка сценария, не имитация MASTER RESET.
+7. **EVENT LOG** показывает команды, отказы команд, стадии и first-out trip со временем модели.
+
+OVERSPEED: выберите ENABLE, затем START для Main/Backup. После срабатывания ожидайте выбега перед reset.
+
+Котёл: MANUAL разрешает изменение уставки клапана ползунком/±5%; AUTO доступен для питательных клапанов и впрыска. MEDIAN/AVG/MIN/MAX действительно переключают выбранный канал. Химические величины явно обозначены как номинальные, не динамические.
+
+### Прокрутка и размер окна
+
+Убрана случайная прокрутка документа и горизонтальное переполнение схемы. Длинные таблицы/перечни прокручиваются **внутри рабочей области** намеренно, а навигация/аварийная кнопка остаются доступны. На узком окне появляется выпадающая навигация; сцена не сжимается в нечитаемую фотографию.
+
+### Связь H25 ↔ KU
+
+- Оба окна должны быть открыты с одного origin, например `http://localhost:8000`.
+- Используйте **два видимых окна рядом**. В скрытой вкладке физика приостанавливается: это явная политика времени модели.
+- Канал имеет версию протокола, идентификатор сессии и TTL 6 секунд.
+- `?session=lesson-1` изолирует отдельную сессию; одинаковое значение требуется на H25 и KU.
+- `?link=0` отключает обмен.
+- Два H25 или два KU в одной сессии показывают SESSION CONFLICT; закройте дубликат.
+- При отсутствии H25 котёл явно работает от автономного номинального источника тепла.
+
+## Что исправлено
+
+- Фотографии, маски и прозрачные hotspot-кнопки исключены из runtime.
+- Общая оболочка, семантические кнопки, отдельная навигация, исправленные звук/fullscreen и тренерская панель.
+- Одна последовательность пуска на simulation clock, без цепочек `setTimeout`.
+- Реальные modeled permissives перед START; запрет прямого переключения статуса оператором.
+- Overspeed main/backup достигает уставок и фиксирует trip.
+- Согласованные производные теги на всех экранах, включая выбег и trip.
+- Исправлены нулевые счётчики, отрицательная мощность/ток, повторное увеличение счётчика trip.
+- EXH и spread вычисляются непосредственно из 18 TC, без скрытых калибровочных смещений.
+- Устойчивые уставки напряжения и реактивной мощности, согласованный PF.
+- Сброс сценария отделён от сброса защит.
+- Проверка свежести/сессии связи; транспорт не переписывает готовые показания.
+- Источник котла находится в репозитории; пути `D:\qozon` удалены.
+- `build.js` очищает output и генерирует H25 **и KU**, без PNG-референсов.
+
+## Проверки
+
+```bash
+npm test
+npm run build
+npx playwright install --with-deps chromium
+npm run test:browser
+```
+
+Проверенная в этой поставке конфигурация: Chromium / Linux.
+
+- 33 математические/контрактные проверки;
+- 26 регрессионных сценариев H25/KU;
+- 308 проверок экран × размер окна × source/deploy;
+- 28 вариантов layout;
+- 9 браузерных сценариев, включая обмен между двумя окнами.
+
+Размеры: 1920×1080, 1440×900, 1366×768, 1280×720, 1024×768, 800×600, 390×844. Узкое окно проверено как desktop viewport, не как реальное touch-устройство. Нативный fullscreen, Windows DPI/WebView2 и звук на реальной ОС требуют отдельной ручной приёмки.
+
+Результат browser suite: `test-results/browser.json`. GitHub Actions workflow включён в `.github/workflows/ci.yml`.
+
+## Архитектура
+
+```
+index.html / css/diasys.css  — общий native HMI shell
+js/app.js                   — HTML/SVG-компоненты, команды и обновление представления
+js/engine.js                — детерминированный шаг H25 и конечные стадии пуска
+js/tags.js                  — исходный реестр технологических тегов
+js/screens/                 — инвентаризация тегов/команд экранов
+js/exhaust-math.js          — независимая термопарная математика
+js/unit20-link.js           — versioned/session-scoped BroadcastChannel + fallback
+ku/model.js                 — отдельная reduced-order модель котла
+ku/app.js                   — native экраны PL3009/PL3010
+build.js                    — единая генерация deploy_unit20
+```
+
+В старых экранных каталогах сохранены измеренные координаты как исторические метаданные; **новый layout их не использует**. Ветка с исходной реализацией остаётся доступна через историю git. Каталоги `ref/`, `ref_full/`, `ref_orig/` — только архивные образцы в исходном репозитории; в рабочую сборку и компактный release-архив не копируются.
+
+## Ограничения — важно прочитать
+
+Не все исходные нарисованные функции стали полноценной физической моделью. В новой версии они не маскируются под работающие:
+
+- ручные последовательности CRANK/FIRE не реализованы; используйте AUTO;
+- PSS, детальный AVR/AER, DCS/GPP/remote arbitration и калибровка LIFT не моделируются; вводящие в заблуждение органы убраны или отключены с пояснением;
+- часть вспомогательных тегов остаётся номинальной и помечена **REF**;
+- немоделируемые start-check условия помечены **ASSUMED**; разрешение START учитывает только реализованные условия;
+- sync-check упрощён: частота/напряжение проверяются по модели, фазовая ошибка — сценарный вход, не расчёт переходного процесса сети;
+- котёл имеет восемь реализованных клапанов; это не полная копия всех арматур исходного изображения;
+- насыщение — табличная интерполяция, не IAPWS-IF97; химия номинальная;
+- нет сохранения сценария на диск, длительного журнала или полного replay;
+- нет авторизации инструктора: локальный offline-тренажёр, не многопользовательская АСУ ТП.
+
+Подробности и статус аудита: `REBUILD-NOTES.md`.
+
+## Windows desktop
+
+Сборка только на Windows; нужен Edge WebView2 runtime.
+
+```powershell
+python -m pip install -r requirements-desktop.txt
+npm ci
+build_unit20.bat
+```
+
+Результат: `dist/UNIT20-Simulator.exe`. Сам Python-launcher обслуживает только `deploy_unit20`, на случайном loopback-порту. При работе pywebview открывает H25 и KU отдельными окнами. При fallback браузерный сервер живёт до закрытия окна управления сервером.
+
+**Windows EXE в этой Linux-среде не собран и не проверен.** В поставку входят web-версия, исходники и portable-конфигурация сборки.

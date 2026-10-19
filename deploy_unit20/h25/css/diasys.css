@@ -1,110 +1,1074 @@
-/* DIASYS Netmation [Operator] — overlay architecture.
- * The reference screenshot is the pixel-exact background; only live values
- * (white cells) and working buttons are overlaid. Fixed 1280x574 stage
- * (top date/time header removed — starts at H25 GAS TURBINE GENERATOR bar). */
-
-* { box-sizing: border-box; margin: 0; padding: 0; }
-html, body {
-  background: #000; height: 100%; overflow: hidden;
-  font-family: "MS Sans Serif", Tahoma, Geneva, Verdana, sans-serif;
-  -webkit-user-select: none; user-select: none;
+/* Native HMI v3. No raster backgrounds, masking rectangles or absolute overlay UI. */
+:root {
+  font-family: Arial, Helvetica, sans-serif;
+  color: #142230;
+  background: #222d3b;
+  font-size: 13px;
+  --nav: #173b67;
+  --blue: #22639a;
+  --line: #9baab8;
+  --surface: #edf1f4;
+  --run: #cf3030;
+  --stop: #198846;
+  --amber: #ffc247;
 }
-#viewport {
-  position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+* {
+  box-sizing: border-box;
 }
-#stage {
-  width: 1280px; height: 574px; flex: 0 0 auto;
-  position: relative; transform-origin: center center;
-  font-size: 12px; color: #000;
+html,
+body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
 }
-#refbg { position: absolute; left: 0; top: 0; width: 1280px; height: 574px; }
-
-/* page overlay (mimic area) — nav zonalar USTIDA: sahifa tugmasi har doim bosiladi.
- * Oldin #navzones DOMda keyin kelgani uchun ustida chizilib, x>1115 dagi
- * tugmalar (overspeed LIFT, vib TRIP) "ora-orada ishlamay" qolgandi. */
-#body { position: absolute; left: 0; top: 24px; width: 1108px; height: 506px; z-index: 2; }
-#page { position: relative; width: 1108px; height: 506px; }
-
-/* transparent nav click zones */
-#navzones { position: absolute; left: 0; top: 0; width: 1280px; height: 574px;
-  pointer-events: none; z-index: 1; }
-.ozone {
-  position: absolute; left: 1115px; width: 160px; height: 20px;
-  cursor: pointer; pointer-events: auto;
+button,
+input,
+select {
+  font: inherit;
 }
-.ozone.dbg { border: 2px solid #FF0000; background: rgba(255,0,0,.15); }
-
-/* ===== overlay widgets (opaque replicas covering ref cells/buttons) ===== */
-.panel { position: absolute; }
-.panel.ghost { background: transparent; border: none; box-shadow: none; }
-.panel .ph { text-align: center; font-weight: bold; font-size: 12px;
-  color: #fff; padding: 2px 4px; font-family: Arial, sans-serif; }
-.ov {
-  position: absolute; background: #fff; color: #000;
-  border: 1px inset #808080; font-family: Arial, sans-serif; font-weight: bold;
-  display: flex; align-items: center; justify-content: center; gap: 5px;
-  white-space: nowrap; overflow: hidden; cursor: default;
+button,
+a {
+  touch-action: manipulation;
 }
-.obtn {
-  position: absolute; background: #C0C0C0; color: #000;
-  border: 2px outset #ffffff; font-family: Arial, sans-serif;
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer; white-space: nowrap; overflow: hidden;
+button {
+  cursor: pointer;
+  border: 1px solid #8493a2;
+  border-radius: 3px;
+  background: linear-gradient(#fff, #e1e6eb);
+  color: #13283d;
+  padding: 7px 11px;
+  min-height: 30px;
 }
-.obtn:active { border-style: inset; }
-.obtn.orange { background: rgb(251,165,0); border-style: inset; }
-.obtn.clear { background: transparent; border: none; }
-.fbar { position: absolute; background: rgb(0,0,122); }
-.olamp { position: absolute; border: 1px solid #000; }
-.osym { position: absolute; border: 2px solid #000; overflow: hidden; }
-/* 52G / 52L / 41 uzgich: rangli kvadrat o'rtasidan qora chiziq (pichoq).
- * Chiziq sim BO'YLAB: gorizontal bar -> gorizontal chiziq;
- * vertikal bar (.hz) -> vertikal chiziq. */
-.osym::after { content: ""; position: absolute; top: 50%; left: -3px; right: -3px;
-  height: 2px; margin-top: -1px; background: #000; }
-.osym.hz::after { top: -3px; bottom: -3px; left: 50%; right: auto;
-  width: 2px; height: auto; margin-top: 0; margin-left: -1px; }
-.olamptext { position: absolute; border: 2px outset #fff; color: #000;
-  font-family: Arial, sans-serif; display: flex; align-items: center;
-  justify-content: center; text-align: center; line-height: 1.1;
-  white-space: normal; overflow: hidden; }
-.scrow { position: absolute; border: 1px solid #000; color: #000;
-  font-family: Arial, sans-serif; display: flex; flex-direction: column;
-  align-items: center; justify-content: center; text-align: center;
-  line-height: 1.25; }
-.schead { position: absolute; background: rgb(0,0,122); color: #fff;
-  font-family: Arial, sans-serif; font-weight: bold;
-  display: flex; align-items: center; justify-content: center;
-  text-align: center; border: 1px solid #000; }
-.readybox { position: absolute; border: 2px outset #fff; color: #000;
-  font-family: Arial, sans-serif; font-weight: bold;
-  display: flex; align-items: center; justify-content: center;
-  text-align: center; }
-/* data report tables (screens 17-18) */
-.drtab { position: absolute; border: 1px solid #000; background: rgb(70,130,180);
-  font-family: Arial, sans-serif; overflow: hidden; }
-.drtab .drrow { display: flex; width: 100%; }
-.drtab .drl { flex: 1; color: #fff; font-weight: bold; padding: 1px 3px;
-  border-bottom: 1px solid rgba(0,0,0,.35); white-space: nowrap; overflow: hidden; }
-.drtab .drv { width: 44%; background: #fff; color: #000; font-weight: bold;
-  border-left: 1px solid #000; border-bottom: 1px solid #808080;
-  padding: 1px 3px; text-align: center; white-space: nowrap; overflow: hidden; }
-.omotor { position: absolute; border: 2px solid #000; border-radius: 50%;
-  color: #000; font-family: Arial, sans-serif; font-weight: bold;
-  display: flex; align-items: center; justify-content: center; }
-.opump { position: absolute; border: 2px solid #000; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center; }
-.mcell { position: absolute; border: 2px outset #fff; color: #000;
-  font-family: Arial, sans-serif; display: flex; align-items: center;
-  justify-content: center; white-space: nowrap; overflow: hidden; }
-/* fullscreen button (viewport corner, outside the 1:1 HMI replica) */
-#fsbtn { position: fixed; right: 10px; bottom: 10px; z-index: 100;
-  background: rgba(0,0,40,.85); color: #FFC107; border: 2px solid #FFC107;
-  padding: 6px 12px; font-family: Arial, sans-serif; font-size: 12px;
-  font-weight: bold; cursor: pointer; border-radius: 4px; }
-/* trainer fault-injection panel (?trainer=1) — outside HMI, instructor only */
-#trainer { position: absolute; left: 8px; bottom: 8px; z-index: 50;
-  background: rgba(0,0,40,.92); color: #fff; border: 2px solid #FF9800;
-  padding: 6px 8px; font-family: Arial, sans-serif; font-size: 11px; }
-#trainer button { margin: 3px 4px 3px 0; padding: 4px 8px; font-size: 11px;
-  cursor: pointer; border: 2px outset #fff; }
+button:hover:not(:disabled) {
+  background: #d8eafa;
+  border-color: #22639a;
+}
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+a:focus-visible {
+  outline: 3px solid #e49d00;
+  outline-offset: 2px;
+}
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+button.selected,
+button[aria-pressed='true'] {
+  background: var(--amber);
+  border-color: #a66e10;
+  color: #352200;
+}
+button.danger {
+  background: #be2727;
+  color: white;
+  border-color: #8f1616;
+}
+button.primary {
+  background: #22639a;
+  color: white;
+  border-color: #1b4a70;
+}
+button.small {
+  padding: 4px 7px;
+  font-size: 11px;
+  min-height: 26px;
+}
+a {
+  color: #215b8a;
+}
+input,
+select {
+  border: 1px solid #8799aa;
+  background: white;
+  border-radius: 3px;
+  min-height: 29px;
+  padding: 5px;
+}
+input[type='number'] {
+  width: 80px;
+  font-variant-numeric: tabular-nums;
+}
+input[type='range'] {
+  min-height: 20px;
+  padding: 0;
+  width: 100%;
+}
+#app {
+  height: 100dvh;
+  display: grid;
+  grid-template-rows: 52px 70px minmax(0, 1fr) auto 30px;
+  min-width: 0;
+}
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 16px;
+  background: #102f54;
+  color: white;
+  border-bottom: 3px solid #3a88bc;
+}
+.brand {
+  font-size: 18px;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+}
+.brand small {
+  font-size: 11px;
+  color: #b7d3ea;
+  display: block;
+  letter-spacing: 1.5px;
+}
+.topbar .spacer {
+  flex: 1;
+}
+.topbar button {
+  background: #234669;
+  color: white;
+  border-color: #65829d;
+}
+.topbar button[aria-pressed='true'] {
+  background: #ffc247;
+  color: #1d2c38;
+}
+.topbar a {
+  color: #e1edf7;
+  text-decoration: none;
+  border-left: 1px solid #5b7691;
+  padding-left: 12px;
+}
+.model-badge {
+  font-size: 10px;
+  border: 1px solid #7995af;
+  padding: 4px 7px;
+  border-radius: 3px;
+  color: #d4e2ee;
+  white-space: nowrap;
+}
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  background: #dce4eb;
+  border-bottom: 1px solid #97a9b8;
+  gap: 1px;
+}
+.kpi {
+  padding: 9px 17px;
+  background: #f0f4f7;
+  min-width: 0;
+}
+.kpi label {
+  display: block;
+  font-size: 10px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  color: #607589;
+  margin-bottom: 4px;
+}
+.kpi .number {
+  font-size: 23px;
+  font-weight: bold;
+  font-variant-numeric: tabular-nums;
+}
+.unit {
+  font-size: 11px;
+  font-weight: normal;
+  color: #607080;
+  margin-left: 5px;
+}
+.kpi.status .number {
+  font-size: 16px;
+  display: block;
+  margin-top: 8px;
+}
+.workspace {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr);
+  min-height: 0;
+}
+.sidebar {
+  background: #c7d2dc;
+  border-right: 1px solid #8195a8;
+  overflow: auto;
+  padding: 10px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.sidebar h2 {
+  font-size: 10px;
+  letter-spacing: 1.4px;
+  color: #425b71;
+  padding: 3px 7px;
+  margin: 0 0 7px;
+}
+.nav-btn {
+  text-align: left;
+  background: transparent;
+  border-color: transparent;
+  min-height: 29px;
+  padding: 5px 8px;
+  font-size: 11px;
+  border-radius: 2px;
+  display: flex;
+  gap: 9px;
+  align-items: center;
+}
+.nav-btn .index {
+  color: #5b748b;
+  font-size: 10px;
+  min-width: 17px;
+}
+.nav-btn.active {
+  background: #194c7d;
+  color: white;
+  border-color: #103b64;
+}
+.nav-btn.active .index {
+  color: #a7ceea;
+}
+.sidebar .bottom-link {
+  margin-top: auto;
+  padding: 12px 7px 2px;
+  font-size: 11px;
+}
+.main {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  background: #dfe5ea;
+}
+.screen-head {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+  background: #fff;
+  border-bottom: 1px solid var(--line);
+  padding: 12px 18px;
+  min-height: 58px;
+  flex-shrink: 0;
+}
+.screen-head h1 {
+  font-size: 19px;
+  margin: 0;
+  font-weight: 600;
+}
+.eyebrow {
+  font-size: 10px;
+  color: #6b8093;
+  letter-spacing: 1px;
+  margin-bottom: 3px;
+}
+.screen-head .screen-meta {
+  margin-left: auto;
+  text-align: right;
+  font-size: 11px;
+  color: #64788b;
+}
+.screen-content {
+  overflow: auto;
+  min-height: 0;
+  padding: 14px 16px;
+  scrollbar-gutter: stable;
+}
+.content-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(270px, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+.stack {
+  display: grid;
+  gap: 14px;
+}
+.panel {
+  border: 1px solid #9cabb8;
+  background: #f4f6f8;
+  border-radius: 3px;
+  min-width: 0;
+  overflow: hidden;
+}
+.panel h2,
+.panel-title {
+  margin: 0;
+  background: #386f9f;
+  color: white;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  padding: 8px 11px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.panel-body {
+  padding: 12px;
+}
+.schematic {
+  width: 100%;
+  display: block;
+  background: #e7ecef;
+  height: auto;
+  max-height: 270px;
+}
+.schematic text {
+  font-family: Arial, sans-serif;
+  fill: #203a50;
+  font-size: 13px;
+}
+.schematic .pipe {
+  fill: none;
+  stroke: #a18d27;
+  stroke-width: 5;
+  stroke-linejoin: round;
+}
+.schematic .air {
+  stroke: #4886ab;
+}
+.schematic .steam {
+  stroke: #bf4a45;
+}
+.schematic .equip {
+  fill: #d6e1ea;
+  stroke: #3d6687;
+  stroke-width: 2;
+}
+.schematic .flow {
+  stroke-dasharray: 8 5;
+  animation: flow 1.5s linear infinite;
+}
+@keyframes flow {
+  to {
+    stroke-dashoffset: -26;
+  }
+}
+.schematic[data-off='true'] .flow {
+  animation: none;
+  opacity: 0.4;
+}
+.schematic .state {
+  fill: #198846;
+}
+.schematic .state.running {
+  fill: #d33333;
+}
+.schematic .label {
+  font-size: 11px;
+  fill: #5c7385;
+}
+.readings {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 12px;
+  padding: 5px 12px;
+}
+.reading {
+  padding: 7px 0;
+  border-bottom: 1px solid #d6dfe6;
+  min-width: 0;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  align-items: center;
+}
+.reading label {
+  font-size: 11px;
+  color: #4c6377;
+  overflow-wrap: anywhere;
+  max-width: 60%;
+}
+.reading output {
+  font-weight: bold;
+  white-space: nowrap;
+  min-width: 75px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.reading .tag-code {
+  display: block;
+  font-size: 9px;
+  color: #8091a0;
+  margin-top: 2px;
+}
+.sensor-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+  padding: 12px;
+}
+.sensor {
+  border: 1px solid #bdcad5;
+  background: #fff;
+  padding: 8px;
+  min-width: 0;
+}
+.sensor label {
+  font-size: 10px;
+  display: block;
+  color: #536c82;
+  margin-bottom: 6px;
+}
+.sensor output {
+  font-size: 17px;
+  font-weight: bold;
+  font-variant-numeric: tabular-nums;
+}
+.bar-track {
+  height: 5px;
+  background: #d5dfe8;
+  margin-top: 7px;
+}
+.bar-fill {
+  height: 100%;
+  background: #2479b0;
+  width: 0;
+  max-width: 100%;
+}
+.bar-fill.high {
+  background: #c43d33;
+}
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 12px;
+  align-items: start;
+}
+.control-group {
+  border: 1px solid #c1cbd4;
+  border-radius: 3px;
+  background: #e7edf2;
+  padding: 8px;
+  flex: 1;
+  min-width: 140px;
+}
+.control-group label {
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  font-weight: bold;
+  color: #536b7e;
+  display: block;
+  margin-bottom: 7px;
+}
+.control-group .buttons {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.control-group button {
+  flex: 1;
+  font-size: 11px;
+  white-space: normal;
+}
+.control-group.wide {
+  min-width: 230px;
+}
+.control-group.note {
+  background: #fff8e7;
+  color: #775921;
+  font-size: 11px;
+}
+.load-row {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.info-line {
+  padding: 9px 12px;
+  color: #5c7285;
+  font-size: 11px;
+  background: #e9eff4;
+  border-top: 1px solid #c4d0da;
+}
+.info-line.warn {
+  color: #8d5b00;
+  background: #fff4d7;
+}
+.badge {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  padding: 4px 7px;
+  background: #dce5ee;
+  border: 1px solid #a9bacb;
+  border-radius: 2px;
+  font-size: 10px;
+  white-space: nowrap;
+}
+.badge.good {
+  color: #136638;
+  background: #dceee2;
+  border-color: #9cc5ab;
+}
+.badge.bad {
+  color: #9e2727;
+  background: #f8dfdf;
+  border-color: #daa3a3;
+}
+.badge.unknown {
+  color: #7a632a;
+  background: #f7efdc;
+}
+.dot {
+  height: 7px;
+  width: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  display: inline-block;
+}
+.status-strip {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+}
+.footer {
+  background: #233d56;
+  color: #d4e3ef;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 16px;
+  font-size: 10px;
+}
+.footer .spacer {
+  flex: 1;
+}
+.action-bar {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 16px;
+  border-top: 1px solid #9cacb9;
+  background: #cdd8e1;
+  flex-shrink: 0;
+}
+.action-bar .message {
+  flex: 1;
+  min-width: 0;
+  color: #486174;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+.action-bar button {
+  font-size: 11px;
+}
+.trainer {
+  background: #fff5df;
+  border-top: 2px solid #d6a348;
+  padding: 9px 16px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.trainer[hidden] {
+  display: none;
+}
+.trainer strong {
+  font-size: 11px;
+  color: #85580e;
+}
+.trainer button {
+  font-size: 11px;
+}
+.trainer .trip-text {
+  font-size: 11px;
+  margin-left: auto;
+}
+.motor-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+.motor-card {
+  border: 1px solid #9caebd;
+  background: #f3f6f8;
+  padding: 10px;
+  border-radius: 3px;
+}
+.motor-card h3 {
+  font-size: 12px;
+  margin: 0 0 3px;
+}
+.motor-card .motor-id {
+  font-size: 10px;
+  color: #758a9c;
+}
+.motor-card .status-strip {
+  padding: 8px 0;
+}
+.motor-card .buttons {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+.motor-card button {
+  font-size: 10px;
+  flex: 1;
+  padding: 5px;
+}
+.checks {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+.check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px;
+  background: white;
+  border: 1px solid #bbcad6;
+  border-left: 4px solid #8897a5;
+  min-width: 0;
+  font-size: 11px;
+}
+.check.good {
+  border-left-color: #218553;
+}
+.check.bad {
+  border-left-color: #c12d2d;
+  background: #fff0f0;
+}
+.check .code {
+  display: block;
+  font-size: 9px;
+  color: #788c9b;
+  margin-top: 4px;
+}
+.check .badge {
+  margin-left: auto;
+}
+.report-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  font-size: 11px;
+}
+.report-table th {
+  background: #2f6596;
+  color: white;
+  padding: 8px;
+  text-align: left;
+}
+.report-table td {
+  padding: 7px 10px;
+  border-bottom: 1px solid #d9e2ea;
+}
+.report-table td:last-child {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.report-table td small {
+  color: #8293a3;
+  display: block;
+}
+.menu-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.menu-grid button {
+  text-align: left;
+  min-height: 70px;
+  padding: 12px;
+  background: #f7f9fa;
+}
+.menu-grid button span {
+  display: block;
+  color: #6e8499;
+  font-size: 10px;
+  margin-bottom: 7px;
+}
+.polar {
+  display: block;
+  width: 100%;
+  max-height: 410px;
+  background: #e9eff4;
+}
+.polar text {
+  fill: #577086;
+  font:
+    11px Arial,
+    sans-serif;
+}
+.polar .grid {
+  stroke: #9badbd;
+  fill: none;
+  stroke-width: 1;
+}
+.polar polygon {
+  fill: #29a3b818;
+  stroke: #06869c;
+  stroke-width: 2;
+}
+.big-speed {
+  font-size: 42px;
+  font-weight: bold;
+  font-variant-numeric: tabular-nums;
+  padding: 12px;
+  color: #244e71;
+}
+.progress {
+  margin: 0 15px 15px;
+  height: 14px;
+  background: #d1dce5;
+  position: relative;
+}
+.progress > span {
+  display: block;
+  height: 100%;
+  background: #2f82b6;
+}
+.test-controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding: 12px;
+}
+.test-controls > div {
+  border: 1px solid #b6c6d3;
+  background: white;
+  padding: 12px;
+}
+.test-controls h3 {
+  margin: 0 0 5px;
+  font-size: 13px;
+}
+.test-controls p {
+  font-size: 11px;
+  color: #698095;
+}
+.test-controls .buttons {
+  display: flex;
+  gap: 6px;
+}
+dialog {
+  width: min(840px, 90vw);
+  max-height: 80dvh;
+  border: 1px solid #55738f;
+  border-radius: 5px;
+  background: #eff4f7;
+  padding: 0;
+  color: #1b344a;
+}
+dialog::backdrop {
+  background: #13273b88;
+}
+.dialog-head {
+  padding: 14px 18px;
+  background: #234d77;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.dialog-head h2 {
+  margin: 0;
+  font-size: 17px;
+}
+.dialog-body {
+  overflow: auto;
+  max-height: 65dvh;
+  padding: 16px;
+}
+.event {
+  display: grid;
+  grid-template-columns: 70px 90px 1fr;
+  gap: 10px;
+  font-size: 12px;
+  padding: 9px;
+  border-bottom: 1px solid #c7d5e0;
+}
+.event time {
+  font-variant-numeric: tabular-nums;
+  color: #6a8296;
+}
+.event.TRIP {
+  background: #fee9e5;
+}
+.narrow-notice {
+  display: none;
+}
+.mobile-nav {
+  display: none;
+}
+.valve-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.valve-card {
+  background: white;
+  border: 1px solid #b6c5d2;
+  padding: 10px;
+}
+.valve-card h3 {
+  margin: 0;
+  font-size: 12px;
+}
+.valve-card .load-row {
+  margin: 8px 0;
+}
+.valve-card button {
+  font-size: 10px;
+  padding: 4px 7px;
+}
+.legend {
+  display: flex;
+  gap: 14px;
+  font-size: 10px;
+  padding: 9px 12px;
+  color: #647b8e;
+}
+.legend b {
+  font-weight: normal;
+}
+.alarm-banner {
+  padding: 9px 16px;
+  background: #a81c21;
+  color: white;
+  font-size: 12px;
+  display: flex;
+  gap: 10px;
+}
+.alarm-banner[hidden] {
+  display: none;
+}
+@media (min-width: 1600px) {
+  :root {
+    font-size: 14px;
+  }
+  .readings .reading {
+    padding: 10px 0;
+  }
+  .schematic {
+    max-height: 320px;
+  }
+  .sensor-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+@media (max-width: 1100px) {
+  .workspace {
+    grid-template-columns: 150px minmax(0, 1fr);
+  }
+  .sidebar {
+    padding: 8px 4px;
+  }
+  .nav-btn {
+    font-size: 10px;
+    padding: 5px;
+  }
+  .content-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .motor-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .kpi {
+    padding: 10px;
+  }
+  .topbar {
+    gap: 8px;
+  }
+  .model-badge {
+    display: none;
+  }
+  .checks {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .menu-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 650px) {
+  #app {
+    grid-template-rows: auto auto minmax(0, 1fr) auto 28px;
+  }
+  .topbar {
+    padding: 8px;
+    flex-wrap: wrap;
+  }
+  .brand {
+    font-size: 15px;
+  }
+  .topbar button {
+    font-size: 11px;
+    padding: 5px;
+  }
+  .topbar a {
+    font-size: 11px;
+  }
+  .topbar .spacer {
+    display: none;
+  }
+  .kpis {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .kpi {
+    padding: 7px;
+  }
+  .kpi .number {
+    font-size: 18px;
+  }
+  .kpi label {
+    font-size: 9px;
+  }
+  .kpi.status .number {
+    font-size: 12px;
+    margin-top: 0;
+  }
+  .workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .sidebar {
+    display: none;
+  }
+  .mobile-nav {
+    display: block;
+    max-width: 150px;
+  }
+  .screen-head {
+    padding: 9px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .screen-head h1 {
+    font-size: 16px;
+  }
+  .screen-head .screen-meta {
+    display: none;
+  }
+  .screen-content {
+    padding: 9px;
+  }
+  .readings {
+    grid-template-columns: 1fr;
+  }
+  .motor-grid,
+  .checks,
+  .report-grid,
+  .valve-grid {
+    grid-template-columns: 1fr;
+  }
+  .sensor-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .menu-grid {
+    grid-template-columns: 1fr;
+  }
+  .trainer {
+    max-height: 150px;
+    overflow: auto;
+    padding: 8px;
+  }
+  .action-bar {
+    padding: 8px;
+    flex-wrap: wrap;
+  }
+  .action-bar .message {
+    flex-basis: 100%;
+  }
+  .footer {
+    padding: 0 8px;
+    gap: 8px;
+    font-size: 9px;
+  }
+  .control-group {
+    min-width: 125px;
+  }
+  .test-controls {
+    grid-template-columns: 1fr;
+  }
+  .brand small {
+    font-size: 9px;
+  }
+  .narrow-notice {
+    display: block;
+    font-size: 10px;
+    color: #8b6a2c;
+    background: #fff5df;
+    padding: 6px 10px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+  }
+}
+/* Explicit grid placement: hiding the instructor row must not shift the footer. */
+#app > .topbar {
+  grid-row: 1;
+}
+#app > .kpis {
+  grid-row: 2;
+}
+#app > .workspace {
+  grid-row: 3;
+}
+#app > .trainer {
+  grid-row: 4;
+}
+#app > .footer {
+  grid-row: 5;
+}
+#navigation {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.nominal {
+  font-size: 8px;
+  color: #8a6b22;
+  background: #fff0cc;
+  border: 1px solid #e0c78e;
+  padding: 1px 3px;
+  border-radius: 2px;
+  margin-left: 4px;
+}
+.panel-note {
+  padding: 9px 12px;
+  background: #fff4d9;
+  font-size: 10px;
+  color: #7a5e20;
+}
+.start-controls .controls {
+  gap: 6px;
+  padding: 9px;
+}
+.start-controls .control-group {
+  min-width: 140px;
+  padding: 6px;
+}
+.start-controls .control-group button {
+  padding: 5px;
+  min-height: 27px;
+}
+.start-controls .control-group label {
+  margin-bottom: 5px;
+}
+details.panel > summary {
+  cursor: pointer;
+  padding: 10px 12px;
+  background: #e8eff5;
+  color: #345b7b;
+  font-size: 11px;
+  font-weight: bold;
+}
+details.panel[open] > summary {
+  border-bottom: 1px solid #a6b8c8;
+}

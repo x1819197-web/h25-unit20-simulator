@@ -1,7 +1,6 @@
-/* Screen ws. Pixel-measured overlays. */
+/* Native view metadata. Legacy measurement coordinates retained for tag inventory only; not used for layout. */
 window.SCR_WS = {
   id: "ws",
-  bg: "ref/13_wheelspace.png",
   title: "13 WHEEL SPACE",
   nav: "WHEELSPACE",
   navList: ["START-UP", "BEARING OIL", "EXHAUST", "VIBRATION", "WHEELSPACE", "MENU"],
@@ -60,5 +59,4 @@ window.SCR_WS = {
     {x:933, y:462, w:102, h:37, fs:10, label:"MASTER RESET", g:null, v:null, act:"reset"},
     {x:1038, y:462, w:72, h:37, fs:11, label:"TRIP", g:null, v:null, act:"trip"},
   ],
-  render: function (page) { renderOverlay(page, this); }
 };

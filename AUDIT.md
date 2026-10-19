@@ -1,3 +1,5 @@
+> ARCHIVED: this document describes the pre-v3 photo-overlay implementation. Current status: README.md and REBUILD-NOTES.md.
+
 # UNIT-20 SIMULATOR — AUDIT (1-BOSQICH, kod o'zgartirilmadi)
 
 Sana: 2026-10-06. Audit o'tkazuvchi: senior simulyator-dasturchi.

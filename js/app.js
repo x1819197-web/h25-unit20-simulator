@@ -1,687 +1,1284 @@
-/* Global frame glue: 1280x574 scaler (top header cut), ref background. */
-
-var H25_SCREENS = {};
-var H25_NAV_ALL = ["START-UP", "FFD CONTROL", "SYNCHRO. &EXC. OPE.", "FUEL GAS",
-  "LUBE OIL", "GENERATOR", "VENTILATION", "IBH CONTROL", "MOTORS", "BEARING OIL",
-  "EXHAUST", "VIBRATION", "WHEEL SPACE", "START CHECK", "TIMERS", "TRIP MONITOR",
-  "DATA REPORT 1", "DATA REPORT 2", "OVERSPEED"];
-var H25_NAV_ALIAS = { "WHEEL SPACE": "WHEELSPACE", "WHEELSPACE": "WHEELSPACE" };
-var H25_current = "startup";
-var H25_DBG = false;
-
-function fitStage() {
-  /* Uniform scale — proporsiya HECH QACHON buzilmaydi (siqilish/cho'zilish yo'q).
-   * Sahna oynaga sig'adi, ortiqcha joy qora fonda qoladi. */
-  var s = Math.min(window.innerWidth / 1280, window.innerHeight / 574);
-  document.getElementById("stage").style.transform = "scale(" + s + ")";
+/* Native UNIT-20 HMI: semantic controls + SVG mimics. Reference PNGs are never loaded. */
+'use strict';
+var H25_SCREENS = {},
+  H25_current = 'startup';
+var H25_NAMES = {
+  GEN_POWER: 'Active power',
+  FOFFD: 'Fuel demand',
+  IGV_POS: 'Inlet guide vanes',
+  IBH_POS: 'Inlet bleed heating',
+  SPEED: 'Turbine speed',
+  SPEED_PCT: 'Rated speed',
+  EXH_T: 'Exhaust mean · 18 TC',
+  EXH_REF_T: 'Reference temperature',
+  GEN_KV: 'Generator voltage',
+  GEN_A: 'Generator current',
+  GEN_MVAR: 'Reactive power',
+  GEN_PF: 'Power factor',
+  GEN_HZ: 'Generator frequency',
+  GEN_MWH: 'Generated energy',
+  FUEL_GAS_T: 'Fuel gas temperature',
+  FUEL_GAS_P: 'Fuel supply pressure',
+  FUEL_FLOW: 'Fuel flow',
+  P1_PRESS: 'Fuel P1',
+  P2_PRESS: 'Fuel P2',
+  SRV_POS: 'Stop / ratio valve',
+  ALLOW_SPREAD: 'Allowable spread',
+  SPREAD_1: 'Spread · max − min',
+  SPREAD_2: 'Spread · max − 2nd min',
+  SPREAD_3: 'Spread · max − 3rd min',
+  EXH_SPREAD_3: 'Spread · max − 3rd min',
+  MW_REF: 'Power reference',
+  MW_FDBK: 'Power feedback',
+  LOAD_SET: 'Load setpoint',
+  LO_HDR_P: 'Lube oil header pressure',
+  LO_HDR_P2: 'Lube header · channel 2',
+  HYD_OIL_P: 'Hydraulic pressure',
+  EXC_V: 'Field voltage',
+  EXC_A: 'Field current',
+  LUBE_HDR_T: 'Lube header temperature',
+  WHEEL_MAX_T: 'Wheel-space max temperature',
+  CPR_IN_T: 'Compressor inlet temperature',
+  CPR_OUT_P: 'Compressor discharge pressure',
+  CPR_OUT_T: 'Compressor discharge temperature',
+  INLET_AIR_T: 'Inlet air temperature',
+  FFD_MIN: 'Minimum fuel',
+  FFD_SU: 'Start-up limit',
+  FFD_SD: 'Shutdown limit',
+  FFD_ACC: 'Acceleration limit',
+  FFD_SPD: 'Speed governor',
+  FFD_LLM: 'Load limiter',
+  FFD_TEMP: 'Temperature limit',
+  OS_MAX_SPEED: 'Maximum test speed',
+  OS_MAX_VIB: 'Maximum test vibration',
+  OS_EXH_T: 'Exhaust mean',
+  OS_TURB_SPEED: 'Turbine speed',
+  OS_SPEED_REF: 'Speed reference',
+  F1_GCV: 'Pilot valve F1',
+  F2_1_GCV: 'Fuel stage F2-1',
+  F2_2_GCV: 'Fuel stage F2-2',
+  F2_3_GCV: 'Fuel stage F2-3',
+  F2_4_GCV: 'Fuel stage F2-4',
+};
+var MOTOR_NAMES = {
+  eop: 'Emergency lube oil pump',
+  mop1: 'Main lube pump №1',
+  mop2: 'Main lube pump №2',
+  mist1: 'Oil mist extractor №1',
+  mist2: 'Oil mist extractor №2',
+  hop1: 'Hydraulic pump №1',
+  hop2: 'Hydraulic pump №2',
+  jop: 'Generator jacking oil pump',
+  tgm: 'Turning gear motor',
+  ven1: 'Turbine ventilation №1',
+  ven2: 'Turbine ventilation №2',
+  bc1: 'Bearing cooling fan №1',
+  bc2: 'Bearing cooling fan №2',
+  evac1: 'Inlet filter evacuation',
+  gfc1: 'Generator cooling №1',
+  gfc2: 'Generator cooling №2',
+  gfc3: 'Generator cooling №3',
+  crank: 'Cranking motor',
+};
+var nativeAudio = null,
+  soundOn = true,
+  lastTone = 0;
+function $(id) {
+  return document.getElementById(id);
 }
-
-/* Fullscreen toggle: F key or double-click anywhere on empty stage area.
- * Browser blocks silent fullscreen, so it needs this user gesture. */
-function toggleFullscreen() {
-  try {
-    if (document.fullscreenElement) {
-      if (document.exitFullscreen) document.exitFullscreen();
-    } else {
-      var de = document.documentElement;
-      if (de.requestFullscreen) de.requestFullscreen();
-      else if (de.webkitRequestFullscreen) de.webkitRequestFullscreen();
-    }
-  } catch (e) {}
-  setTimeout(fitStage, 300);
+function esc(v) {
+  return String(v ?? '').replace(/[&<>"']/g, function (c) {
+    return {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;',
+    }[c];
+  });
 }
-
-/* highlight active control buttons (orange = selected, as in screenshots) */
-function refreshButtons() {
-  if (!window.H25 || !H25.ctl) return;
-  var map = {
-    location: H25.ctl.location, cooldown: H25.ctl.cooldown,
-    masterMode: H25.ctl.masterMode, speedMode: H25.ctl.speedMode,
-    loadMode: H25.ctl.loadMode, gtStatus: H25.ctl.gtStatus,
-    ffdStatus: H25.ctl.ffdStatus, governor: H25.ctl.governor,
-    avrMode: H25.ctl.avrMode, fieldMode: H25.ctl.fieldMode,
-    fieldClose: H25.ctl.field41 ? "CLOSED" : "OPEN",
-    pss: H25.ctl.pss, s43L: H25.ctl.s43L, s43G: H25.ctl.s43G, s43OPE: H25.ctl.s43OPE,
-    osTest: H25.ctl.osTest, lift: H25.ctl.lift
-  };
-  var btns = document.querySelectorAll("#page [data-grp]");
-  for (var i = 0; i < btns.length; i++) {
-    var b = btns[i];
-    b.classList.toggle("orange", map[b.getAttribute("data-grp")] === b.getAttribute("data-val"));
-  }
+function unit(k, u) {
+  return (
+    { degC: '°C', degA: '°', um: 'µm', 'min-1': 'rpm', hrs: 'h', CNT: 'count' }[
+      u ?? H25_TAGS[k]?.unit
+    ] ||
+    (u ?? H25_TAGS[k]?.unit ?? '')
+  );
 }
-
-/* generic overlay renderer: values + buttons from screen data tables */
-function renderOverlay(page, def) {
-  var h = "";
-  var i, v;
-  if (def.values) {
-    for (i = 0; i < def.values.length; i++) {
-      v = def.values[i];
-      h += '<div class="ov" style="left:' + v[1] + 'px;top:' + v[2] + 'px;width:' +
-        v[3] + 'px;height:' + v[4] + 'px;font-size:' + v[5] + 'px;' +
-        (v[7] ? 'background:' + v[7] + ';' : '') + '">' +
-        '<span data-tag="' + v[0] + '">--</span>' + (v[6] ? '<span>' + v[6] + '</span>' : '') + '</div>';
-    }
+function isModeled(k) {
+  return (
+    /^(TC\d|CT\d|VIB_|OS_|GEN_|FFD_|SPREAD_|EXH_|ACT_P|REACT_P|FLD_|F[12]_)/.test(
+      k,
+    ) ||
+    [
+      'SPEED',
+      'SPEED_PCT',
+      'SPEED_REF',
+      'FOFFD',
+      'IGV_POS',
+      'IBH_POS',
+      'LOAD_SET',
+      'MW_REF',
+      'MW_FDBK',
+      'FUEL_FLOW',
+      'FUEL_GAS_P',
+      'P1_PRESS',
+      'P2_PRESS',
+      'SRV_POS',
+      'LO_HDR_P',
+      'LO_HDR_P2',
+      'MOP_DISCH',
+      'HYD_OIL_P',
+      'CPR_OUT_P',
+      'CPR_OUT_T',
+      'TB_SPEED',
+      'CS019',
+      'GAS_FLOW',
+      'TX_MED',
+      'MAX_VIB',
+      'ALLOW_SPREAD',
+      'IGV_REF',
+      'MBA_CT02',
+      'BA10_T2B',
+      'RST_DATE',
+      'RST_TIME',
+    ].includes(k) ||
+    /^(EOH_|AOH_|GAS_|FS_N|ET_NT|TOT_)/.test(k)
+  );
+}
+function label(k) {
+  return H25_NAMES[k] || k.replace(/_/g, ' ');
+}
+function tag(k) {
+  return '<span data-tag="' + esc(k) + '">—</span>';
+}
+function output(k, u) {
+  return (
+    '<output>' +
+    tag(k) +
+    '<span class="unit">' +
+    esc(unit(k, u)) +
+    '</span></output>'
+  );
+}
+function panel(title, body, extra) {
+  return (
+    '<section class="panel ' +
+    (extra || '') +
+    '"><h2>' +
+    title +
+    '</h2>' +
+    body +
+    '</section>'
+  );
+}
+function reading(k, u) {
+  return (
+    '<div class="reading"><label>' +
+    esc(label(k)) +
+    '<small class="tag-code">' +
+    esc(k) +
+    (isModeled(k) ? '' : ' <span class="nominal">REF</span>') +
+    '</small></label>' +
+    output(k, u) +
+    '</div>'
+  );
+}
+function readings(values) {
+  var seen = {};
+  return (
+    '<div class="readings">' +
+    values
+      .filter(function (v) {
+        if (seen[v[0]]) return false;
+        seen[v[0]] = 1;
+        return true;
+      })
+      .map(function (v) {
+        return reading(v[0], v[6]);
+      })
+      .join('') +
+    '</div>'
+  );
+}
+function sensor(k, u) {
+  return (
+    '<div class="sensor"><label>' +
+    esc(label(k)) +
+    (isModeled(k) ? '' : ' <span class="nominal">REF</span>') +
+    '</label>' +
+    output(k, u) +
+    '<div class="bar-track"><div class="bar-fill" data-bar="' +
+    k +
+    '"></div></div></div>'
+  );
+}
+function badge(text, good) {
+  return (
+    '<span class="badge ' +
+    (good ? 'good' : 'bad') +
+    '"><span class="dot"></span>' +
+    esc(text) +
+    '</span>'
+  );
+}
+function stopJogs() {
+  H25.raiseLower = H25.vRaiseLower = H25.iRaiseLower = 0;
+}
+function message(text) {
+  $('command-message').textContent = text;
+}
+function invoke(act, g, v) {
+  switch (act) {
+    case 'press':
+      H25.press(g, v);
+      break;
+    case 'release':
+      H25.release52G();
+      break;
+    case 'ibhrelease':
+      H25.releaseIBH();
+      break;
+    case 'close41':
+      H25.close41();
+      break;
+    case 'open41':
+      H25.open41();
+      break;
+    case 'countreset':
+      if (confirm('Reset elapsed counters? Lifetime counters are retained.'))
+        H25.counterReset();
+      break;
+    case 'os-enable':
+      H25.osEnable();
+      break;
+    case 'os-disable':
+      H25.osDisable();
+      break;
+    case 'os-start-main':
+      H25.osStartMain();
+      break;
+    case 'os-start-backup':
+      H25.osStartBackup();
+      break;
+    case 'os-abort-main':
+      H25.osAbortMain();
+      break;
+    case 'os-abort-backup':
+      H25.osAbortBackup();
+      break;
+    case 'lift':
+      H25.liftCal(v);
+      break;
   }
-  if (def.buttons) {
-    for (i = 0; i < def.buttons.length; i++) {
-      var b = def.buttons[i];
-      h += '<div class="obtn' + (b.clear ? " clear" : "") + '" style="left:' + b.x + 'px;top:' + b.y + 'px;width:' +
-        b.w + 'px;height:' + b.h + 'px;font-size:' + b.fs + 'px;' +
-        (b.bold ? 'font-weight:bold;' : '') + '"' +
-        (b.g ? ' data-grp="' + b.g + '" data-val="' + b.v + '"' : '') +
-        (b.to ? ' data-to="' + b.to + '"' : '') +
-        ' data-act="' + b.act + '">' + b.label + '</div>';
-    }
-  }
-  page.innerHTML = h;
-  if (def.bars) {
-    for (var j = 0; j < def.bars.length; j++) {
-      var fb = document.createElement("div");
-      fb.className = "fbar";
-      fb.setAttribute("data-tag", def.bars[j].tag);
-      fb.style.left = (def.bars[j].cx - 8) + "px";
-      fb.style.width = "17px";
-      page.appendChild(fb);
-    }
-    updateFbars();
-  }
-  var k, lp;
-  if (def.lamps) {
-    for (k = 0; k < def.lamps.length; k++) {
-      lp = def.lamps[k];
-      var lm = document.createElement("div");
-      lm.className = "olamp";
-      lm.setAttribute("data-lamp", lp.id);
-      lm.style.cssText = "left:" + lp.x + "px;top:" + lp.y + "px;width:" +
-        lp.w + "px;height:" + lp.h + "px;";
-      page.appendChild(lm);
-    }
-  }
-  if (def.syms) {
-    for (k = 0; k < def.syms.length; k++) {
-      var sm = def.syms[k];
-      var se = document.createElement("div");
-      /* Uzgich pichog'i sim yo'nalishi BO'YLAB: vertikal bar -> vertikal chiziq (.hz),
-       * gorizontal bar -> gorizontal chiziq. Oldin teskari (ko'ndalang) edi. */
-      se.className = "osym" + (sm.h > sm.w ? " hz" : "");
-      se.setAttribute("data-lamp", sm.id);
-      se.style.cssText = "left:" + sm.x + "px;top:" + sm.y + "px;width:" +
-        sm.w + "px;height:" + sm.h + "px;";
-      page.appendChild(se);
-    }
-  }
-  if (def.lamptexts) {
-    for (k = 0; k < def.lamptexts.length; k++) {
-      var lt = def.lamptexts[k];
-      var le = document.createElement("div");
-      le.className = "olamptext";
-      le.setAttribute("data-lamptext", lt.id);
-      le.style.cssText = "left:" + lt.x + "px;top:" + lt.y + "px;width:" +
-        lt.w + "px;height:" + lt.h + "px;font-size:" + lt.fs + "px;";
-      le.textContent = lt.text;
-      page.appendChild(le);
-    }
-  }
-  if (def.scrows) {
-    for (k = 0; k < def.scrows.length; k++) {
-      var sr = def.scrows[k];
-      var se2 = document.createElement("div");
-      se2.className = "scrow";
-      se2.setAttribute("data-scrow", sr.id);
-      se2.style.cssText = "left:" + sr.x + "px;top:" + sr.y + "px;width:" +
-        sr.w + "px;height:" + sr.h + "px;font-size:" + sr.fs + "px;";
-      se2.innerHTML = "<div>" + sr.l1 + "</div><div>" + sr.l2 + "</div>";
-      page.appendChild(se2);
-    }
-  }
-  if (def.headers) {
-    for (k = 0; k < def.headers.length; k++) {
-      var hd = def.headers[k];
-      var he = document.createElement("div");
-      he.className = "schead";
-      he.style.cssText = "left:" + hd.x + "px;top:" + hd.y + "px;width:" +
-        hd.w + "px;height:" + hd.h + "px;font-size:" + hd.fs + "px;";
-      he.textContent = hd.text;
-      page.appendChild(he);
-    }
-  }
-  if (def.ready) {
-    var rb = document.createElement("div");
-    rb.className = "readybox";
-    rb.setAttribute("data-ready", "1");
-    rb.style.cssText = "left:" + def.ready.x + "px;top:" + def.ready.y + "px;width:" +
-      def.ready.w + "px;height:" + def.ready.h + "px;font-size:" + def.ready.fs + "px;";
-    page.appendChild(rb);
-  }
-  if (def.drtables) {
-    for (k = 0; k < def.drtables.length; k++) {
-      var dt = def.drtables[k];
-      var tab = document.createElement("div");
-      tab.className = "drtab";
-      tab.style.cssText = "left:" + dt.x + "px;top:" + dt.y + "px;width:" +
-        dt.w + "px;height:" + dt.h + "px;font-size:" + dt.fs + "px;";
-      var rh = "";
-      for (var r = 0; r < dt.rows.length; r++) {
-        var row = dt.rows[r];
-        rh += '<div class="drrow" style="height:' + dt.rh + 'px;"><div class="drl">' +
-          row[0] + '</div><div class="drv"><span data-tag="' + row[1] + '">--</span>' +
-          (row[2] ? ' ' + row[2] : '') + '</div></div>';
-      }
-      tab.innerHTML = rh;
-      page.appendChild(tab);
-    }
-  }
-  if (def.osbar) {
-    var oc = document.createElement("canvas");
-    oc.id = "osbar-cv";
-    oc.width = def.osbar.w;
-    oc.height = def.osbar.h;
-    oc.style.cssText = "position:absolute;left:" + def.osbar.x + "px;top:" +
-      def.osbar.y + "px;";
-    page.appendChild(oc);
-    updateOsbar();
-  }
-  if (def.tripitems) {
-    for (k = 0; k < def.tripitems.length; k++) {
-      var ti = def.tripitems[k];
-      var te = document.createElement("div");
-      te.className = "scrow";
-      te.setAttribute("data-tripitem", ti.id);
-      te.style.cssText = "left:" + ti.x + "px;top:" + ti.y + "px;width:" +
-        ti.w + "px;height:" + ti.h + "px;font-size:" + ti.fs + "px;";
-      te.innerHTML = "<div>" + ti.l1 + "</div><div>" + ti.l2 + "</div>";
-      page.appendChild(te);
-    }
-  }
-  if (def.motors) {
-    for (k = 0; k < def.motors.length; k++) {
-      var mo = def.motors[k];
-      var me = document.createElement("div");
-      me.className = "omotor";
-      me.setAttribute("data-motor", mo.id);
-      me.style.cssText = "left:" + mo.x + "px;top:" + mo.y + "px;width:" +
-        mo.d + "px;height:" + mo.d + "px;font-size:" + Math.round(mo.d * 0.5) + "px;";
-      me.textContent = "M";
-      page.appendChild(me);
-    }
-  }
-  if (def.pumps) {
-    for (k = 0; k < def.pumps.length; k++) {
-      var pu = def.pumps[k];
-      var pe = document.createElement("div");
-      pe.className = "opump";
-      pe.setAttribute("data-motor", pu.id);
-      pe.style.cssText = "left:" + pu.x + "px;top:" + pu.y + "px;width:" +
-        pu.d + "px;height:" + pu.d + "px;";
-      pe.innerHTML = pumpArrow(pu.d, pu.dir);
-      page.appendChild(pe);
-    }
-  }
-  if (def.mcells) {
-    for (k = 0; k < def.mcells.length; k++) {
-      var mc = def.mcells[k];
-      var ce = document.createElement("div");
-      ce.className = "mcell";
-      ce.setAttribute("data-mcell", mc.motor);
-      ce.setAttribute("data-kind", mc.kind);
-      ce.style.cssText = "left:" + mc.x + "px;top:" + mc.y + "px;width:" +
-        mc.w + "px;height:" + mc.h + "px;font-size:" + mc.fs + "px;";
-      page.appendChild(ce);
-    }
-  }
-  if (def.polar) {
-    var pc = document.createElement("canvas");
-    pc.id = "polar-cv";
-    pc.width = def.polar.size;
-    pc.height = def.polar.size;
-    pc.style.cssText = "position:absolute;left:" + def.polar.x + "px;top:" +
-      def.polar.y + "px;";
-    page.appendChild(pc);
-    updatePolar();
-  }
-  if (def.basket) {
-    page.appendChild(basketSVG(def.basket));
-  }
+  H25.derive();
+  H25.push();
   refreshCustom();
-  wireOverlay(page);
+  var event = H25.events[0];
+  if (event) message(event.message);
 }
-
-/* combustor basket (screens 1/4/8): 5 live segments, red firing / white open.
- * def.basket = {x, y, d} page coords. Geometry scales with d. */
-function basketPie(cx, cy, r, a0, a1) {
-  var p0 = [cx + r * Math.cos(a0 * Math.PI / 180), cy + r * Math.sin(a0 * Math.PI / 180)];
-  var p1 = [cx + r * Math.cos(a1 * Math.PI / 180), cy + r * Math.sin(a1 * Math.PI / 180)];
-  return "M" + cx + "," + cy + " L" + p0[0].toFixed(1) + "," + p0[1].toFixed(1) +
-    " A" + r.toFixed(1) + "," + r.toFixed(1) + " 0 0 1 " +
-    p1[0].toFixed(1) + "," + p1[1].toFixed(1) + " Z";
+function actionButton(b) {
+  return (
+    '<button type="button" data-act="' +
+    esc(b.act) +
+    '"' +
+    (b.g ? ' data-grp="' + esc(b.g) + '" data-val="' + esc(b.v) + '"' : '') +
+    '>' +
+    esc(b.label) +
+    '</button>'
+  );
 }
-function basketSVG(b) {
-  var d = b.d, c = d / 2, R = d * 0.489, rr = d * 0.213, rf = d * 0.165;
-  var s = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  s.setAttribute("width", d); s.setAttribute("height", d);
-  s.style.cssText = "position:absolute;left:" + b.x + "px;top:" + b.y + "px;";
-  var h = "";
-  var segs = [["F23", 225, 315], ["F22", 315, 405], ["F24", 45, 135], ["F21", 135, 225]];
-  for (var i = 0; i < segs.length; i++) {
-    h += '<path data-bseg="' + segs[i][0] + '" d="' + basketPie(c, c, R, segs[i][1], segs[i][2]) +
-      '" fill="rgb(254,0,0)" stroke="none"/>';
-  }
-  var dv = [[45], [135], [225], [315]], j, a, x1, y1, x2, y2;
-  for (j = 0; j < 4; j++) {
-    a = dv[j][0] * Math.PI / 180;
-    x1 = (c + rr * Math.cos(a)).toFixed(1); y1 = (c + rr * Math.sin(a)).toFixed(1);
-    x2 = (c + R * Math.cos(a)).toFixed(1); y2 = (c + R * Math.sin(a)).toFixed(1);
-    h += '<line x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 +
-      '" stroke="#333" stroke-width="' + Math.max(1.5, d * 0.02).toFixed(1) + '"/>';
-  }
-  h += '<circle cx="' + c + '" cy="' + c + '" r="' + R.toFixed(1) +
-    '" fill="none" stroke="#222" stroke-width="' + Math.max(2, d * 0.025).toFixed(1) + '"/>';
-  h += '<circle cx="' + c + '" cy="' + c + '" r="' + rr.toFixed(1) + '" fill="#fff"/>';
-  h += '<circle data-bseg="F1" cx="' + c + '" cy="' + c + '" r="' + rf.toFixed(1) + '" fill="rgb(254,0,0)"/>';
-  var fs = (d * 0.117).toFixed(1), rl = d * 0.35;
-  var labs = [["F2-3", c, c - rl], ["F2-2", c + rl, c], ["F2-4", c, c + rl], ["F2-1", c - rl, c]];
-  for (j = 0; j < 4; j++) {
-    h += '<text x="' + labs[j][1].toFixed(1) + '" y="' + labs[j][2].toFixed(1) +
-      '" text-anchor="middle" dominant-baseline="central" font-family="Arial" ' +
-      'font-weight="bold" font-size="' + fs + '" fill="#fff">' + labs[j][0] + '</text>';
-  }
-  h += '<text x="' + c + '" y="' + c + '" text-anchor="middle" dominant-baseline="central" ' +
-    'font-family="Arial" font-weight="bold" font-size="' + (d * 0.14).toFixed(1) + '" fill="#fff">F1</text>';
-  s.innerHTML = h;
-  return s;
+function controlPanel(def) {
+  var groups = {},
+    names = {
+      location: 'CONTROL LOCATION',
+      cooldown: 'COOLDOWN',
+      masterMode: 'MASTER MODE',
+      master: 'MASTER COMMAND',
+      speedMode: 'SPEED / LOAD',
+      loadMode: 'LOAD CONTROL',
+      governor: 'GOVERNOR',
+      s43L: '43-25L',
+      s43G: '43-25G',
+      s43OPE: 'CONTROL SOURCE',
+      avrMode: 'EXCITATION MODE',
+      fieldMode: 'FIELD MODE',
+      fieldClose: 'FIELD BREAKER 41',
+      pss: 'PSS',
+      osTest: 'OVERSPEED TEST',
+      lift: 'LIFT SELECTION',
+    };
+  (def.buttons || []).forEach(function (b) {
+    if (
+      [
+        'location',
+        'cooldown',
+        'speedMode',
+        'pss',
+        's43L',
+        's43G',
+        's43OPE',
+        'fieldMode',
+        'avrMode',
+      ].includes(b.g)
+    )
+      return;
+    if (
+      ['trip', 'reset', 'goto', 'edit-load', 'ffd'].includes(b.act) ||
+      b.g === 'gtStatus' ||
+      b.g === 'ffdStatus'
+    )
+      return;
+    var g =
+      b.g ||
+      {
+        vraise: 'VOLTAGE CONTROL',
+        vlower: 'VOLTAGE CONTROL',
+        iraise: 'REACTIVE CONTROL',
+        ilower: 'REACTIVE CONTROL',
+        raise: 'LOAD ADJUST',
+        lower: 'LOAD ADJUST',
+        close41: 'FIELD BREAKER 41',
+        open41: 'FIELD BREAKER 41',
+        release: 'SYNCHRONIZE',
+        ibhrelease: 'IBH LOCKOUT',
+        countreset: 'COUNTERS',
+      }[b.act] ||
+      'ACTIONS';
+    if (g === 'lift') return;
+    (groups[g] || (groups[g] = [])).push(b);
+  });
+  var html = Object.keys(groups)
+    .map(function (g) {
+      return (
+        '<div class="control-group"><label>' +
+        esc(names[g] || g) +
+        '</label><div class="buttons">' +
+        groups[g].map(actionButton).join('') +
+        '</div></div>'
+      );
+    })
+    .join('');
+  if (['startup', 'ffd', 'sync'].includes(def.id))
+    html +=
+      '<div class="control-group wide"><label>LOAD SETPOINT · 0–32 MW</label><form id="load-form" class="load-row"><input aria-label="Load setpoint MW" id="load-input" type="number" min="0" max="32" step="0.1" value="' +
+      H25.tags.LOAD_SET +
+      '"><span>MW</span><button type="submit">APPLY</button></form></div>';
+  return html
+    ? panel(
+        'OPERATOR CONTROLS',
+        '<div class="controls">' + html + '</div>',
+        'start-controls',
+      )
+    : '';
 }
-function refreshBasket() {
-  var st = (typeof H25.burnerOpen === "function") ? H25.burnerOpen() : null;
-  if (!st) return;
-  var els = document.querySelectorAll("#page [data-bseg]");
-  for (var i = 0; i < els.length; i++) {
-    var id = els[i].getAttribute("data-bseg");
-    els[i].setAttribute("fill", st[id] ? "#ffffff" : "rgb(254,0,0)");
-  }
+function turbineSVG(id) {
+  var common =
+    '<path class="pipe air flow" d="M35 155H200M350 155H430M560 155H700"/><path class="pipe steam flow" d="M700 155H865"/><path class="pipe flow" d="M500 40V100"/><text x="440" y="28">FUEL GAS</text><path class="equip" d="M180 110L350 130V180L180 200Z"/><path class="equip" d="M560 125L710 100V210L560 185Z"/><rect class="equip" x="430" y="100" width="130" height="110" rx="8"/><circle class="equip" cx="100" cy="155" r="52"/><text x="72" y="160">GEN</text><path stroke="#445e75" stroke-width="6" d="M152 155H180"/><text x="208" y="232">COMPRESSOR</text><text x="451" y="232">COMBUSTOR</text><text x="600" y="232">TURBINE</text><text x="785" y="185">TO KU-20</text><circle class="state" data-svg-state="flame" cx="495" cy="155" r="24"/><text x="474" y="160" style="fill:white">FIRE</text><text class="label" x="55" y="82">52G / 41</text><text class="label" x="246" y="86">IGV</text><path stroke="#506f88" stroke-width="3" d="M225 111L237 132M245 114L257 135M265 118L277 139"/>';
+  if (id === 'sync' || id === 'gen')
+    common =
+      '<path class="pipe air" d="M80 155H250M350 155H485M575 155H800"/><circle class="equip" cx="130" cy="155" r="55"/><text x="100" y="160">GEN</text><rect class="equip" x="250" y="125" width="100" height="60"/><text x="280" y="160">52G</text><rect class="equip" x="485" y="125" width="90" height="60"/><text x="510" y="160">52L</text><path class="equip" d="M785 100H845V210H785Z"/><text x="760" y="240">50 Hz GRID</text><path class="pipe" d="M130 100V55H360V110"/><rect class="equip" x="220" y="35" width="80" height="40"/><text x="246" y="61">41</text><text x="325" y="45">EXCITER</text><circle class="state" data-svg-state="breaker" cx="300" cy="109" r="8"/>';
+  if (['lube', 'brg', 'vent', 'ibh'].includes(id))
+    common =
+      '<path class="pipe air flow" d="M60 230V80H850V230H60"/><rect class="equip" x="70" y="190" width="160" height="65" rx="5"/><text x="95" y="227">' +
+      {
+        lube: 'LUBE OIL TANK',
+        brg: 'BEARING RETURN',
+        vent: 'AIR FILTER',
+        ibh: 'BLEED MANIFOLD',
+      }[id] +
+      '</text>' +
+      [350, 520, 690]
+        .map(function (x, i) {
+          return (
+            '<path class="pipe flow" d="M' +
+            x +
+            ' 80V230"/><circle class="equip" cx="' +
+            x +
+            '" cy="155" r="35"/><path d="M' +
+            (x - 12) +
+            ' 138L' +
+            (x + 16) +
+            ' 155L' +
+            (x - 12) +
+            ' 172Z" fill="#347aa5"/><text x="' +
+            (x - 33) +
+            '" y="45">BRANCH ' +
+            (i + 1) +
+            '</text>'
+          );
+        })
+        .join('');
+  if (id === 'fuelgas')
+    common =
+      '<path class="pipe flow" d="M45 155H870"/>' +
+      [160, 370, 620]
+        .map(function (x, i) {
+          return (
+            '<path class="equip" d="M' +
+            (x - 20) +
+            ' 135L' +
+            (x + 20) +
+            ' 175V135L' +
+            (x - 20) +
+            ' 175Z"/><text x="' +
+            (x - 37) +
+            '" y="110">' +
+            ['SUPPLY', 'SRV', 'GCV'][i] +
+            '</text>'
+          );
+        })
+        .join('') +
+      '<rect class="equip" x="730" y="115" width="110" height="80" rx="8"/><text x="747" y="160">BURNERS</text>';
+  return (
+    '<svg class="schematic" viewBox="0 0 900 280" role="img" aria-label="' +
+    esc(label(id)) +
+    ' process schematic" data-off="' +
+    !H25.flameOn() +
+    '">' +
+    common +
+    '</svg>'
+  );
 }
-
-/* live exhaust polar plot (screen 11): cyan TC polygon over ref plot */
-function updateOsbar() {
-  var cv = document.getElementById("osbar-cv");
-  var scr = H25_SCREENS[H25_current];
-  if (!cv || !scr || !scr.osbar) return;
-  var ctx = cv.getContext("2d");
-  var W = scr.osbar.w, Hh = scr.osbar.h;
-  var min = 7260, max = 8360;
-  function yOf(v) { return Hh - (v - min) / (max - min) * Hh; }
-  ctx.clearRect(0, 0, W, Hh);
-  /* ref provides scale bar + Main/Backup labels + red pointers;
-   * overlay draws ONLY the live speed needle to avoid double-vision */
-  /* live speed needle */
-  var sp = H25.tags["SPEED"] || 0;
-  var yS = yOf(Math.max(min, Math.min(max, sp)));
-  ctx.fillStyle = "rgb(0,0,0)";
-  ctx.fillRect(W - 34, yS - 1, 28, 3);
-}
-
-function updatePolar() {
-  var cv = document.getElementById("polar-cv");
-  var scr = H25_SCREENS[H25_current];
-  if (!cv || !scr || !scr.polar) return;
-  var ctx = cv.getContext("2d");
-  var P = scr.polar, cx = P.c, cy = P.c;
-  ctx.clearRect(0, 0, P.size, P.size);
-  /* single live polygon: current TC values -> polar points.
-   * Bitta koordinata tizimi: markaz = halqalar markazi (H25_CFG.PLOT),
-   * r = clamp(T,0,800)/800 * R_tashqi; CT001 tepada, 20 deg qadam. */
-  var pts = [];
+function polarSVG() {
+  var s =
+    '<svg class="polar" viewBox="0 0 440 440" role="img" aria-label="18 exhaust thermocouples, 0 to 800 degrees Celsius">';
+  [50, 100, 150, 200].forEach(function (r) {
+    s +=
+      '<circle class="grid" cx="220" cy="220" r="' +
+      r +
+      '"/><text x="224" y="' +
+      (220 - r + 13) +
+      '">' +
+      r * 4 +
+      ' °C</text>';
+  });
   for (var i = 1; i <= 18; i++) {
-    var tag = "TC" + (i < 10 ? "0" + i : i);
-    var v = H25.tags[tag] !== undefined ? H25.tags[tag] : 600;
-    var pt = H25_EXM.polarXY(i, v, P.c, P.r);
-    pts.push(pt);
+    var a = ((-90 + (i - 1) * 20) * Math.PI) / 180,
+      x = 220 + 200 * Math.cos(a),
+      y = 220 + 200 * Math.sin(a);
+    s += '<path class="grid" d="M220 220L' + x + ' ' + y + '"/>';
+    var tx = 220 + 211 * Math.cos(a),
+      ty = 220 + 211 * Math.sin(a);
+    s +=
+      '<text text-anchor="middle" dominant-baseline="middle" x="' +
+      tx +
+      '" y="' +
+      ty +
+      '">' +
+      String(i).padStart(2, '0') +
+      '</text>';
   }
-  /* trail history: previous polygons fade out (real-time feel, one live line) */
-  if (!window.H25_polarHist) window.H25_polarHist = [];
-  window.H25_polarHist.push(pts);
-  if (window.H25_polarHist.length > 4) window.H25_polarHist.shift();
-  var hist = window.H25_polarHist;
-  for (var h = 0; h < hist.length - 1; h++) {
-    ctx.strokeStyle = "rgba(60,234,232," + (0.15 + 0.15 * h) + ")";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    for (var j = 0; j < 18; j++) {
-      if (j === 0) ctx.moveTo(hist[h][j][0], hist[h][j][1]);
-      else ctx.lineTo(hist[h][j][0], hist[h][j][1]);
-    }
-    ctx.closePath();
-    ctx.stroke();
-  }
-  /* live line on top: single bright cyan */
-  ctx.strokeStyle = "rgb(60,234,232)";
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  for (var k = 0; k < 18; k++) {
-    if (k === 0) ctx.moveTo(pts[k][0], pts[k][1]);
-    else ctx.lineTo(pts[k][0], pts[k][1]);
-  }
-  ctx.closePath();
-  ctx.stroke();
+  return s + '<polygon id="tc-polygon" points=""/></svg>';
 }
-
-function pumpArrow(d, dir) {
-  if (dir === "fan")
-    return '<svg width="' + d + '" height="' + d + '"><circle cx="' + d/2 + '" cy="' +
-      d/2 + '" r="' + d/6 + '" fill="#000"/></svg>';
-  var pts = dir === "right" ? "4," + (d/2-7) + " " + (d-4) + "," + d/2 + " 4," + (d/2+7)
-    : dir === "down" ? (d/2-7) + "," + (d-4) + " " + d/2 + ",4 " + (d/2+7) + "," + (d-4)
-    : (d/2-7) + ",4 " + d/2 + "," + (d-4) + " " + (d/2+7) + ",4";
-  if (dir === "down")
-    pts = (d/2-7) + ",4 " + (d/2+7) + ",4 " + d/2 + "," + (d-4);
-  return '<svg width="' + d + '" height="' + d + '"><polygon points="' + pts + '" fill="#000"/></svg>';
+function renderMotorCards(ids) {
+  return (
+    '<div class="motor-grid">' +
+    ids
+      .map(function (id) {
+        return (
+          '<article class="motor-card" data-motor-card="' +
+          id +
+          '"><h3>' +
+          esc(MOTOR_NAMES[id] || id) +
+          '</h3><span class="motor-id">' +
+          id.toUpperCase() +
+          '</span><div class="status-strip"><span data-motor-status="' +
+          id +
+          '"></span></div><div class="buttons">' +
+          ['AUTO', 'MANUAL', 'START', 'STOP']
+            .map(function (a) {
+              return (
+                '<button data-motor="' +
+                id +
+                '" data-command="' +
+                a +
+                '">' +
+                a +
+                '</button>'
+              );
+            })
+            .join('') +
+          '</div></article>'
+        );
+      })
+      .join('') +
+    '</div>'
+  );
 }
-
-/* live colors for lamps / symbols / lamp-texts of the current screen */
-function refreshCustom() {
-  var scr = H25_SCREENS[H25_current];
-  if (!scr) return;
-  var els = document.querySelectorAll("#page [data-lamp]");
-  for (var i = 0; i < els.length; i++)
-    els[i].style.background = H25.stateColor(els[i].getAttribute("data-lamp"));
-  var lts = document.querySelectorAll("#page [data-lamptext]");
-  for (var j = 0; j < lts.length; j++)
-    lts[j].style.background = H25.stateColor(lts[j].getAttribute("data-lamptext"));
-  var scs = document.querySelectorAll("#page [data-scrow]");
-  for (var s = 0; s < scs.length; s++)
-    scs[s].style.background = H25.scColor(scs[s].getAttribute("data-scrow"));
-  var rbs = document.querySelectorAll("#page [data-ready]");
-  for (var rb = 0; rb < rbs.length; rb++) {
-    var okAll = (typeof H25.startCheckOk === "function") ? H25.startCheckOk() : true;
-    rbs[rb].style.background = okAll ? "rgb(0,200,0)" : "#fff";
-    rbs[rb].style.color = okAll ? "#fff" : "rgb(255,0,0)";
-    rbs[rb].textContent = okAll ? "READY TO START" : "NOT READY TO START";
+function reportTables(def) {
+  return (
+    '<div class="report-grid">' +
+    def.drtables
+      .map(function (t, i) {
+        return (
+          '<section class="panel"><table class="report-table"><thead><tr><th>MEASUREMENT · ' +
+          (i + 1) +
+          '</th><th>LIVE VALUE</th></tr></thead><tbody>' +
+          t.rows
+            .map(function (r) {
+              return (
+                '<tr><td>' +
+                esc(r[0]) +
+                '<small>' +
+                esc(r[1]) +
+                (isModeled(r[1]) ? '' : ' <span class="nominal">REF</span>') +
+                '</small></td><td>' +
+                output(r[1], r[2]) +
+                '</td></tr>'
+              );
+            })
+            .join('') +
+          '</tbody></table></section>'
+        );
+      })
+      .join('') +
+    '</div>'
+  );
+}
+function renderScreen(def) {
+  var values = def.values || [],
+    html = '';
+  if (def.id === 'menu')
+    html =
+      '<div class="menu-grid">' +
+      Object.keys(H25_SCREENS)
+        .filter(function (k) {
+          return k !== 'menu';
+        })
+        .map(function (k, i) {
+          return (
+            '<button data-screen="' +
+            k +
+            '"><span>UNIT-20 / ' +
+            String(i + 1).padStart(2, '0') +
+            '</span>' +
+            esc(H25_SCREENS[k].nav) +
+            '</button>'
+          );
+        })
+        .join('') +
+      '</div>';
+  else if (def.drtables) html = reportTables(def);
+  else if (def.id === 'motors')
+    html = renderMotorCards(Object.keys(H25.motors));
+  else if (def.scrows || def.tripitems) {
+    var rows = def.scrows || def.tripitems;
+    html = panel(
+      def.scrows ? 'START PERMISSIVES' : 'LATCHED PROTECTIONS',
+      '<div class="info-line">' +
+        (def.scrows
+          ? 'Only modeled permissives inhibit START. Other reference checks are explicitly marked ASSUMED.'
+          : 'First-out cause is latched once per trip event. Green = no latched trip, not proof of OEM protection coverage.') +
+        '</div><div class="panel-body checks">' +
+        rows
+          .map(function (r) {
+            return (
+              '<div class="check" ' +
+              (def.scrows ? 'data-check' : 'data-trip') +
+              '="' +
+              r.id +
+              '"><div>' +
+              esc(r.l1) +
+              '<small class="code">' +
+              esc(r.l2) +
+              '</small></div><span class="badge">—</span></div>'
+            );
+          })
+          .join('') +
+        '</div>',
+    );
+  } else if (def.id === 'exh')
+    html =
+      '<div class="content-grid"><div class="stack">' +
+      panel('EXHAUST THERMOCOUPLE RADAR · 0–800 °C', polarSVG()) +
+      panel(
+        '18 CHANNELS',
+        '<div class="sensor-grid">' +
+          values
+            .filter(function (v) {
+              return /^TC/.test(v[0]);
+            })
+            .map(function (v) {
+              return sensor(v[0], v[6]);
+            })
+            .join('') +
+          '</div>',
+      ) +
+      '</div><div class="stack">' +
+      panel(
+        'TURBINE & COMBUSTION DATA',
+        readings(
+          values.filter(function (v) {
+            return !/^TC/.test(v[0]);
+          }),
+        ),
+      ) +
+      panel(
+        'CALCULATION BASIS',
+        '<div class="panel-body">Exhaust = arithmetic mean of 18 live thermocouples. Spread uses sorted channels; no display calibration offsets.<p>Thermal time constants and limits are educational assumptions, not OEM settings.</p></div>',
+      ) +
+      '</div></div>';
+  else if (def.id === 'os')
+    html =
+      '<div class="content-grid"><div class="stack">' +
+      panel(
+        'OVERSPEED TRIP TEST',
+        '<div class="status-strip">' +
+          actionButton({
+            label: 'ENABLE',
+            act: 'os-enable',
+            g: 'osTest',
+            v: 'ENABLE',
+          }) +
+          actionButton({
+            label: 'DISABLE',
+            act: 'os-disable',
+            g: 'osTest',
+            v: 'DISABLE',
+          }) +
+          '</div><div class="big-speed">' +
+          output('SPEED') +
+          '</div><div class="progress"><span id="speed-bar"></span></div><div class="test-controls">' +
+          ['main', 'backup']
+            .map(function (kind, i) {
+              return (
+                '<div><h3>' +
+                kind.toUpperCase() +
+                ' TRIP TEST</h3><p>Training setpoint: ' +
+                (i ? 8079 : 8006) +
+                ' rpm</p><div class="buttons">' +
+                actionButton({ label: 'START', act: 'os-start-' + kind }) +
+                actionButton({ label: 'ABORT', act: 'os-abort-' + kind }) +
+                '</div></div>'
+              );
+            })
+            .join('') +
+          '</div>',
+      ) +
+      panel(
+        'LIFT CALIBRATION',
+        '<div class="panel-body">Actuator calibration is not modeled. Selection-only controls from the prototype have been removed rather than presented as working equipment.</div>',
+      ) +
+      '</div><div class="stack">' +
+      panel(
+        'TEST MEASUREMENTS',
+        readings(
+          values.filter(function (v) {
+            return /^OS_|^EXH_T$|^GEN_POWER$/.test(v[0]);
+          }),
+        ),
+      ) +
+      '</div></div>';
+  else {
+    var sensors = values.filter(function (v) {
+      return (
+        /^(VIB_|RG|THR|W[123]_)/.test(v[0]) ||
+        (['brg', 'ws'].includes(def.id) && v[2] > 300)
+      );
+    });
+    var focus = values.filter(function (v) {
+      return !sensors.includes(v);
+    });
+    html =
+      '<div class="content-grid"><div class="stack">' +
+      panel(
+        'PROCESS MIMIC · NATIVE SVG',
+        turbineSVG(def.id) +
+          '<div class="status-strip" id="process-status"></div>',
+      );
+    if (def.id === 'startup') html += controlPanel(def);
+    if (def.bars)
+      html += panel(
+        'FUEL DEMAND & LIMITERS',
+        '<div class="sensor-grid">' +
+          def.bars
+            .map(function (b) {
+              return sensor(b.tag, 'FFD');
+            })
+            .join('') +
+          '</div>',
+      );
+    if (sensors.length && def.id !== 'startup')
+      html += panel(
+        'LIVE CHANNELS',
+        '<div class="sensor-grid">' +
+          sensors
+            .map(function (v) {
+              return sensor(v[0], v[6]);
+            })
+            .join('') +
+          '</div>',
+      );
+    if (def.id !== 'startup') html += controlPanel(def);
+    var equipment = [
+      ...new Set(
+        (def.motors || [])
+          .concat(def.pumps || [])
+          .map(function (m) {
+            return m.id;
+          })
+          .filter(function (id) {
+            return id in H25.motors;
+          }),
+      ),
+    ];
+    if (equipment.length)
+      html += panel(
+        'AUXILIARY EQUIPMENT',
+        '<div class="panel-body">' + renderMotorCards(equipment) + '</div>',
+      );
+    if (def.id === 'sync')
+      html += panel(
+        'SYNCHRONISM CHECK',
+        '<div class="readings">' +
+          reading('GEN_HZ') +
+          reading('GEN_KV') +
+          '</div><div class="status-strip" id="sync-status"></div><div class="info-line">Grid: 50 Hz / 10.92 kV. Limits: Δf ≤ 0.1 Hz, ΔV ≤ 5%, Δφ ≤ 10°. Simplified training check; phase is a scenario input, not a network transient calculation.</div>',
+      );
+    if (def.id === 'startup')
+      html += panel(
+        'START SEQUENCE',
+        '<div class="status-strip" id="start-status"></div><div class="info-line">Cold start: choose INSTRUCTOR → COLD / STOPPED, then AUTO → START. Sequence timing is accelerated for training.</div>',
+      );
+    html +=
+      '</div><div class="stack">' +
+      panel(
+        'LIVE PROCESS VALUES',
+        readings(
+          def.id === 'startup'
+            ? focus.filter(function (v) {
+                return [
+                  'FUEL_GAS_P',
+                  'FUEL_GAS_T',
+                  'LO_HDR_P',
+                  'GEN_KV',
+                  'GEN_A',
+                  'GEN_HZ',
+                  'GEN_MVAR',
+                  'GEN_PF',
+                  'EXH_T',
+                  'SPEED',
+                  'IGV_POS',
+                  'FOFFD',
+                  'CPR_OUT_P',
+                  'CPR_OUT_T',
+                  'MW_FDBK',
+                  'LOAD_SET',
+                ].includes(v[0]);
+              })
+            : focus,
+        ),
+      ) +
+      (def.id === 'startup'
+        ? '<details class="panel"><summary>ALL CHANNELS / REFERENCE VALUES</summary>' +
+          readings(focus) +
+          '<div class="sensor-grid">' +
+          sensors
+            .map(function (v) {
+              return sensor(v[0], v[6]);
+            })
+            .join('') +
+          '</div></details>'
+        : '') +
+      '</div></div>';
   }
-  var tis = document.querySelectorAll("#page [data-tripitem]");
-  for (var t = 0; t < tis.length; t++) {
-    var tid = tis[t].getAttribute("data-tripitem");
-    tis[t].style.background = H25.tripItems[tid] ? "rgb(255,0,0)" : "rgb(0,200,0)";
-  }
-  refreshBasket();
-  updateMotors();
-  /* gorelka staging: yopiq F2 klapan (FOFFD < KD) ekranda oqaradi.
-   * Hamma narsa bog'liq: FFD -> KD -> F2_2/F2_3/F2_4 -> dumaloq gorelka. */
-  try {
-    var burn = {"F2_2_GCV": 1, "F2_3_GCV": 1, "F2_4_GCV": 1};
-    var bos = document.querySelectorAll("#page .ov");
-    for (var bi = 0; bi < bos.length; bi++) {
-      var tag = bos[bi].querySelector("[data-tag]");
-      var bk = tag ? tag.getAttribute("data-tag") : "";
-      if (burn[bk] && (H25.tags[bk] || 99) < 5) bos[bi].style.opacity = "0.45";
-      else bos[bi].style.opacity = "1";
-    }
-  } catch (e) {}
+  if (['sc', 'tim'].includes(def.id)) html += controlPanel(def);
+  html +=
+    '<div class="info-line">REF = nominal reference channel, not a simulated sensor. Only implemented commands are enabled.</div>';
+  $('page').innerHTML = html;
+  wireControls();
+  refreshCustom();
 }
-
-function motorColor(id) {
-  return (H25.motors[id] && H25.motors[id].run) ? "rgb(250,0,0)" : "rgb(42,159,42)";
-}
-
-function updateMotors() {
-  var els = document.querySelectorAll("#page .omotor, #page .opump");
-  for (var i = 0; i < els.length; i++)
-    els[i].style.background = motorColor(els[i].getAttribute("data-motor"));
-  refreshMcells();
-}
-
-/* motor matrix cells (screen 9): text + color follow motor state */
-function refreshMcells() {
-  var els = document.querySelectorAll("#page [data-mcell]");
-  for (var i = 0; i < els.length; i++) {
-    var id = els[i].getAttribute("data-mcell"), kind = els[i].getAttribute("data-kind");
-    var m = H25.motors[id];
-    if (!m) continue;
-    var GRAY = "#C0C0C0", ORG = "rgb(251,165,0)", RED = "rgb(255,0,0)", GRN = "rgb(0,200,0)";
-    if (kind === "run") {
-      els[i].textContent = m.run ? "RUNNING" : "STOPPED";
-      els[i].style.background = m.run ? RED : GRN;
-    } else if (kind === "auto") {
-      els[i].textContent = "AUTO";
-      els[i].style.background = m.auto ? ORG : GRAY;
-    } else if (kind === "manual") {
-      els[i].textContent = "MANUAL";
-      els[i].style.background = m.auto ? GRAY : ORG;
-    } else if (kind === "start") {
-      els[i].textContent = "START";
-      els[i].style.background = (m.run && !m.startGray) ? ORG : GRAY;
-    } else if (kind === "stop") {
-      els[i].textContent = "STOP";
-      els[i].style.background = m.stopLatch ? ORG : GRAY;
-    }
-  }
-}
-
-function wireOverlay(page) {
-  var mcs = page.querySelectorAll("[data-mcell]");
-  for (var m = 0; m < mcs.length; m++) {
-    (function (b) {
-      var kind = b.getAttribute("data-kind"), id = b.getAttribute("data-mcell");
-      if (kind === "run") return;
-      b.style.cursor = "pointer";
-      b.onclick = function () {
-        if (kind === "auto") H25.setMotorMode(id, true);
-        else if (kind === "manual") H25.setMotorMode(id, false);
-        else if (kind === "start") H25.motorStart(id);
-        else if (kind === "stop") H25.motorStop(id);
-      };
-    })(mcs[m]);
-  }
-  var btns = page.querySelectorAll("[data-act]");
-  for (var i = 0; i < btns.length; i++) {
-    (function (b) {
-      var act = b.getAttribute("data-act");
-      if (act === "raise" || act === "lower") {
-        var d = act === "raise" ? 1 : -1;
-        var on = function (e) { if (e) e.preventDefault(); H25.raiseLower = d; };
-        var off = function () { H25.raiseLower = 0; };
-        b.onmousedown = on; b.onmouseup = off; b.onmouseleave = off;
-        b.ontouchstart = on; b.ontouchend = off;
-        return;
-      }
-      if (act === "vraise" || act === "vlower" || act === "iraise" || act === "ilower") {
-        var dd = (act === "vraise" || act === "iraise") ? 1 : -1;
-        var key = (act === "vraise" || act === "vlower") ? "vRaiseLower" : "iRaiseLower";
-        b.onmousedown = function (e) { if (e) e.preventDefault(); H25[key] = dd; };
-        var off2 = function () { H25[key] = 0; };
-        b.onmouseup = off2; b.onmouseleave = off2;
-        b.ontouchstart = function (e) { e.preventDefault(); H25[key] = dd; };
-        b.ontouchend = off2;
-        return;
-      }
-      b.onclick = function () {
-        if (act === "goto") { loadScreen(b.getAttribute("data-to")); return; }
-        if (act === "trip") { H25.trip("MANUAL TRIP PB", "9EX"); return; }
-        if (act === "reset") { H25.masterReset(); return; }
-        if (act === "countreset") { H25.counterReset(); return; }
-        if (act === "release") { H25.release52G(); return; }
-        if (act === "ibhrelease") { H25.releaseIBH(); return; }
-        if (act === "close41") { H25.close41(); return; }
-        if (act === "open41") { H25.open41(); return; }
-        if (act === "os-enable") { H25.osEnable(); return; }
-        if (act === "os-disable") { H25.osDisable(); return; }
-        if (act === "os-start-main") { H25.osStartMain(); return; }
-        if (act === "os-abort-main") { H25.osAbortMain(); return; }
-        if (act === "os-start-backup") { H25.osStartBackup(); return; }
-        if (act === "os-abort-backup") { H25.osAbortBackup(); return; }
-        if (act === "lift") { H25.liftCal(b.getAttribute("data-val")); return; }
-        if (act === "edit-load") {
-          var nv = prompt("Load Set Value [MW] (0 - 32):", H25.tags["LOAD_SET"].toFixed(1));
-          if (nv === null) return;
-          H25.tags["LOAD_SET"] = Math.max(0, Math.min(32, parseFloat(nv) || 0));
-          H25.push();
-          return;
-        }
-        if (act === "ffd") { H25.ctl.ffdStatus = b.getAttribute("data-val"); refreshButtons(); return; }
-        H25.press(b.getAttribute("data-grp"), b.getAttribute("data-val"));
-      };
-    })(btns[i]);
-  }
-  var ed = page.querySelectorAll('[data-act="edit-load"]');
-}
-
-/* (top date/time header removed — stage starts at H25 GAS TURBINE GENERATOR bar) */
-
-/* transparent click zones over the ref nav buttons (per-screen list) */
-function buildZones(list) {
-  list = list || H25_NAV_ALL;
-  var z = document.getElementById("navzones");
-  z.innerHTML = "";
-  for (var i = 0; i < list.length; i++) {
-    (function (name, i) {
-      var d = document.createElement("div");
-      d.className = "ozone" + (H25_DBG ? " dbg" : "");
-      d.style.top = (31 + i * 21.5) + "px";
-      d.setAttribute("data-nav", name);
-      d.onclick = function () {
-        if (name === "MENU") { loadScreen("menu"); return; }
-        var scr = null, want = H25_NAV_ALIAS[name] || name;
-        for (var k in H25_SCREENS) {
-          var sn = H25_SCREENS[k].nav;
-          if (sn === name || (H25_NAV_ALIAS[sn] || sn) === want) { scr = H25_SCREENS[k]; break; }
-        }
-        if (scr) loadScreen(scr.id);
-      };
-      z.appendChild(d);
-    })(list[i], i);
-  }
-}
-
-/* FFD bar geometry: axis 0-127 counts, plot y 463-647 */
-function ffdFillTop(v) { return 647 - v / 127 * 184; }
-function updateFbars() {
-  var els = document.querySelectorAll("#page .fbar");
-  for (var i = 0; i < els.length; i++) {
-    var el = els[i], tag = el.getAttribute("data-tag");
-    var v = (tag in H25.tags) ? H25.tags[tag] : 0;
-    var top = ffdFillTop(v);
-    el.style.top = (top - 170) + "px";
-    el.style.height = Math.max(1, 648 - top) + "px";
-  }
-}
-
 function loadScreen(id) {
-  var scr = H25_SCREENS[id];
-  if (!scr) return;
+  if (!H25_SCREENS[id]) return;
+  stopJogs();
   H25_current = id;
-  var bg = document.getElementById("refbg");
-  if (scr.bg) { bg.style.display = ""; bg.src = scr.bg; }
-  else { bg.style.display = "none"; }
-  buildZones(scr.navList);
-  scr.render(document.getElementById("page"));
+  var def = H25_SCREENS[id];
+  $('screen-title').textContent = def.nav;
+  $('screen-number').textContent =
+    'H25 / ' +
+    String(Object.keys(H25_SCREENS).indexOf(id) + 1).padStart(2, '0');
+  document.title = def.nav + ' — UNIT-20';
+  document.querySelectorAll('.nav-btn').forEach(function (b) {
+    b.classList.toggle('active', b.dataset.screen === id);
+    if (b.dataset.screen === id) b.setAttribute('aria-current', 'page');
+    else b.removeAttribute('aria-current');
+  });
+  $('screen-select').value = id;
+  renderScreen(def);
+  $('page').scrollTop = 0;
+  history.replaceState(null, '', '#' + id);
+}
+function wireControls() {
+  document.querySelectorAll('#page [data-screen]').forEach(function (b) {
+    b.onclick = function () {
+      loadScreen(b.dataset.screen);
+    };
+  });
+  document.querySelectorAll('#page [data-act]').forEach(function (b) {
+    var act = b.dataset.act,
+      jog = {
+        raise: ['raiseLower', 1],
+        lower: ['raiseLower', -1],
+        vraise: ['vRaiseLower', 1],
+        vlower: ['vRaiseLower', -1],
+        iraise: ['iRaiseLower', 1],
+        ilower: ['iRaiseLower', -1],
+      }[act];
+    if (
+      b.dataset.grp === 'masterMode' &&
+      ['CRANK', 'FIRE'].includes(b.dataset.val)
+    ) {
+      b.disabled = true;
+      b.title =
+        'Manual CRANK/FIRE sequence not modeled; use AUTO training sequence';
+      return;
+    }
+    if (
+      [
+        'pss',
+        's43L',
+        's43G',
+        's43OPE',
+        'fieldMode',
+        'avrMode',
+        'location',
+        'cooldown',
+        'speedMode',
+      ].includes(b.dataset.grp)
+    ) {
+      b.disabled = true;
+      b.title = 'Reference selector: detailed control logic is not modeled';
+    }
+    if (jog) {
+      b.onpointerdown = function (e) {
+        if (b.disabled) return;
+        e.preventDefault();
+        b.setPointerCapture(e.pointerId);
+        H25[jog[0]] = jog[1];
+      };
+      b.onpointerup = b.onpointercancel = b.onlostpointercapture = stopJogs;
+      b.onkeydown = function (e) {
+        if (e.code === 'Space' || e.code === 'Enter') {
+          e.preventDefault();
+          H25[jog[0]] = jog[1];
+        }
+      };
+      b.onkeyup = stopJogs;
+    } else
+      b.onclick = function () {
+        invoke(act, b.dataset.grp, b.dataset.val);
+      };
+  });
+  document.querySelectorAll('[data-motor][data-command]').forEach(function (b) {
+    b.onclick = function () {
+      var id = b.dataset.motor,
+        cmd = b.dataset.command;
+      if (cmd === 'AUTO' || cmd === 'MANUAL')
+        H25.setMotorMode(id, cmd === 'AUTO');
+      else if (cmd === 'START') H25.motorStart(id);
+      else H25.motorStop(id);
+      refreshCustom();
+    };
+  });
+  if ($('load-form'))
+    $('load-form').onsubmit = function (e) {
+      e.preventDefault();
+      var value = $('load-input').valueAsNumber;
+      if (Number.isFinite(value) && value >= 0 && value <= 32) {
+        H25.tags.LOAD_SET = value;
+        H25.log('SETPOINT', 'Load ' + value + ' MW');
+        message('Load setpoint accepted');
+      } else message('Enter a value from 0 to 32 MW');
+    };
+}
+function refreshButtons() {
+  document.querySelectorAll('[data-grp]').forEach(function (b) {
+    var g = b.dataset.grp,
+      v = b.dataset.val,
+      val =
+        g === 'fieldClose' ? (H25.ctl.field41 ? 'CLOSED' : 'OPEN') : H25.ctl[g];
+    b.setAttribute('aria-pressed', String(val === v));
+  });
+  document.querySelectorAll('[data-act]').forEach(function (b) {
+    var a = b.dataset.act;
+    if (
+      a === 'press' &&
+      b.dataset.grp === 'master' &&
+      b.dataset.val === 'START'
+    ) {
+      b.disabled = !H25.startCheckOk();
+      b.title = b.disabled
+        ? H25.startReasons().join('; ')
+        : 'Start training sequence';
+    } else if (a === 'release') {
+      b.disabled = !H25.syncReady() || H25.ctl.brk52G;
+      b.title = 'Requires field, rated speed and sync-check';
+    } else if (a.startsWith('os-start'))
+      b.disabled = !H25.running() || H25.ctl.osTest !== 'ENABLE';
+    else if (['raise', 'lower'].includes(a)) b.disabled = !H25.running();
+    else if (['vraise', 'vlower', 'iraise', 'ilower'].includes(a))
+      b.disabled = !H25.ctl.field41 || H25.tripped;
+  });
+}
+function refreshMcells() {
+  refreshCustom();
+}
+function refreshCustom() {
   H25.push();
   refreshButtons();
+  var T = H25.tags;
+  $('gt-state').textContent = H25.seq;
+  $('sim-clock').textContent = H25._simT.toFixed(1) + ' s';
+  $('breaker-state').textContent =
+    '52G ' +
+    (H25.ctl.brk52G ? 'CLOSED' : 'OPEN') +
+    ' · 41 ' +
+    (H25.ctl.field41 ? 'CLOSED' : 'OPEN');
+  $('trip-banner').hidden = !H25.tripped;
+  $('trip-cause').textContent = H25.tripCause;
+  $('trainer-trip').textContent = H25.tripped
+    ? H25.tripCause
+    : 'No latched trip';
+  $('reset-button').disabled =
+    Object.values(H25.faults).some(Boolean) || T.SPEED > 500;
+  $('pause-button').textContent = H25.paused ? 'RESUME' : 'PAUSE';
+  $('pause-button').setAttribute('aria-pressed', String(H25.paused));
+  document.querySelectorAll('[data-fault]').forEach(function (b) {
+    b.setAttribute('aria-pressed', String(H25.faults[b.dataset.fault]));
+  });
+  document.querySelectorAll('[data-motor-card]').forEach(function (card) {
+    var id = card.dataset.motorCard,
+      m = H25.motors[id];
+    card.querySelector('[data-motor-status]').innerHTML =
+      badge(m.run ? 'RUNNING' : 'STOPPED', !m.run) +
+      (m.standby ? '<span class="badge">STANDBY</span>' : '');
+    card.querySelectorAll('button').forEach(function (b) {
+      b.setAttribute(
+        'aria-pressed',
+        String(b.dataset.command === (m.auto ? 'AUTO' : 'MANUAL')),
+      );
+      if (b.dataset.command === 'START') b.disabled = m.run;
+      if (b.dataset.command === 'STOP') b.disabled = !m.run;
+    });
+  });
+  document.querySelectorAll('[data-bar]').forEach(function (e) {
+    var k = e.dataset.bar,
+      d = H25_TAGS[k],
+      max = d?.max || 127,
+      val = T[k] || 0;
+    e.style.width = Math.max(0, Math.min(100, (val / max) * 100)) + '%';
+    e.classList.toggle('high', /VIB/.test(k) && val >= 155);
+  });
+  var modeled = [
+    'zero',
+    'brk',
+    'sc3_4t',
+    'sc1_off',
+    'sc4_qm',
+    'sc4_tb',
+    'sc1_hd',
+    'sc2_fgn',
+    'sc3_vd',
+  ];
+  document.querySelectorAll('[data-check]').forEach(function (el) {
+    var id = el.dataset.check,
+      known = modeled.includes(id),
+      ok = H25.scColor(id) === 'rgb(0,200,0)';
+    el.className = 'check ' + (known ? (ok ? 'good' : 'bad') : '');
+    var b = el.querySelector('.badge');
+    b.textContent = known ? (ok ? 'OK' : 'INHIBIT') : 'ASSUMED';
+    b.className = 'badge ' + (known ? (ok ? 'good' : 'bad') : 'unknown');
+  });
+  document.querySelectorAll('[data-trip]').forEach(function (el) {
+    var on = H25.tripItems[el.dataset.trip];
+    el.className = 'check ' + (on ? 'bad' : 'good');
+    el.querySelector('.badge').textContent = on ? 'TRIP' : 'CLEAR';
+  });
+  if ($('tc-polygon')) {
+    var pts = [];
+    for (var i = 1; i <= 18; i++) {
+      var a = ((-90 + (i - 1) * 20) * Math.PI) / 180,
+        r = Math.max(0, Math.min(800, T[H25.tcTag(i)])) / 4;
+      pts.push(220 + r * Math.cos(a) + ',' + (220 + r * Math.sin(a)));
+    }
+    $('tc-polygon').setAttribute('points', pts.join(' '));
+  }
+  if ($('speed-bar'))
+    $('speed-bar').style.width =
+      Math.min(100, Math.max(0, ((T.SPEED - 7000) / 1400) * 100)) + '%';
+  document.querySelectorAll('.schematic').forEach(function (s) {
+    s.dataset.off = String(!H25.flameOn());
+  });
+  document.querySelectorAll('[data-svg-state]').forEach(function (e) {
+    e.classList.toggle(
+      'running',
+      e.dataset.svgState === 'flame' ? H25.flameOn() : H25.ctl.brk52G,
+    );
+  });
+  if ($('process-status'))
+    $('process-status').innerHTML =
+      badge(H25.flameOn() ? 'FLAME ON' : 'FLAME OFF', !H25.flameOn()) +
+      badge('52G ' + (H25.ctl.brk52G ? 'CLOSED' : 'OPEN'), !H25.ctl.brk52G) +
+      badge('41 ' + (H25.ctl.field41 ? 'CLOSED' : 'OPEN'), !H25.ctl.field41) +
+      '<span class="badge">RUN = RED / STOP = GREEN</span>';
+  if ($('sync-status'))
+    $('sync-status').innerHTML =
+      badge(H25.syncReady() ? 'SYNC READY' : 'SYNC INHIBIT', H25.syncReady()) +
+      '<span class="badge">Δf ' +
+      (T.GEN_HZ - 50 + H25.sync.df).toFixed(2) +
+      ' Hz</span><span class="badge">ΔV ' +
+      ((T.GEN_KV / 10.92 - 1) * 100 + H25.sync.dvPct).toFixed(2) +
+      '%</span><span class="badge">Δφ ' +
+      H25.sync.dphi.toFixed(1) +
+      '°</span>';
+  if (H25_current === 'ibh' && $('process-status'))
+    $('process-status').innerHTML += badge(
+      H25.ctl.ibhLock ? 'IBH LOCKOUT' : 'IBH RELEASED',
+      !H25.ctl.ibhLock,
+    );
+  if ($('start-status'))
+    $('start-status').textContent = H25.startCheckOk()
+      ? 'READY TO START'
+      : H25.startReasons().join(' · ');
+  if ($('events-dialog').open) renderEvents();
+  var link = window.UNIT20_LINK;
+  $('link-quality').textContent = link ? link.status() : 'KU LINK OFF';
+  alarmTick();
 }
-
-/* Bosib-turgich tugmalar (RAISE/LOWER) tiqilib qolmasin: sichqon/barmoq
- * sahifadan tashqarida qo'yib yuborilsa ham jog to'xtaydi. */
-document.addEventListener("mouseup", function () {
-  if (window.H25) { H25.raiseLower = 0; H25.vRaiseLower = 0; H25.iRaiseLower = 0; }
-});
-document.addEventListener("touchend", function () {
-  if (window.H25) { H25.raiseLower = 0; H25.vRaiseLower = 0; H25.iRaiseLower = 0; }
-});
-
-window.addEventListener("resize", fitStage);
-document.addEventListener("fullscreenchange", fitStage);
-document.addEventListener("keydown", function (e) {
-  if (e.key === "F" || e.key === "f" || e.key === "Ф" || e.key === "ф") toggleFullscreen();
-});
-document.addEventListener("dblclick", function (e) {
-  if (e.target === document.getElementById("refbg") ||
-      e.target.id === "viewport" || e.target.id === "stage") toggleFullscreen();
-});
-
-window.onload = function () {
-  H25_DBG = location.search.indexOf("dbg") >= 0;
-  if (typeof SCR_STARTUP !== "undefined") H25_SCREENS.startup = SCR_STARTUP;
-  if (typeof SCR_FFD !== "undefined") H25_SCREENS.ffd = SCR_FFD;
-  if (typeof SCR_SYNC !== "undefined") H25_SCREENS.sync = SCR_SYNC;
-  if (typeof SCR_FUELGAS !== "undefined") H25_SCREENS.fuelgas = SCR_FUELGAS;
-  if (typeof SCR_LUBE !== "undefined") H25_SCREENS.lube = SCR_LUBE;
-  if (typeof SCR_GEN !== "undefined") H25_SCREENS.gen = SCR_GEN;
-  if (typeof SCR_VENT !== "undefined") H25_SCREENS.vent = SCR_VENT;
-  if (typeof SCR_IBH !== "undefined") H25_SCREENS.ibh = SCR_IBH;
-  if (typeof SCR_MOTORS !== "undefined") H25_SCREENS.motors = SCR_MOTORS;
-  if (typeof SCR_BRG !== "undefined") H25_SCREENS.brg = SCR_BRG;
-  if (typeof SCR_EXH !== "undefined") H25_SCREENS.exh = SCR_EXH;
-  if (typeof SCR_VIB !== "undefined") H25_SCREENS.vib = SCR_VIB;
-  if (typeof SCR_WS !== "undefined") H25_SCREENS.ws = SCR_WS;
-  if (typeof SCR_SC !== "undefined") H25_SCREENS.sc = SCR_SC;
-  if (typeof SCR_TIM !== "undefined") H25_SCREENS.tim = SCR_TIM;
-  if (typeof SCR_TRIPM !== "undefined") H25_SCREENS.tripm = SCR_TRIPM;
-  if (typeof SCR_DR1 !== "undefined") H25_SCREENS.dr1 = SCR_DR1;
-  if (typeof SCR_DR2 !== "undefined") H25_SCREENS.dr2 = SCR_DR2;
-  if (typeof SCR_OS !== "undefined") H25_SCREENS.os = SCR_OS;
-  if (typeof SCR_MENU !== "undefined") H25_SCREENS.menu = SCR_MENU;
-  H25.init();
-  fitStage();
-  var m = location.search.match(/screen=(\w+)/);
-  loadScreen((m && H25_SCREENS[m[1]]) ? m[1] : "startup");
-  H25.onTick(updateFbars);
-  H25.onTick(refreshCustom);
-  H25.onTick(updatePolar);
-  H25.onTick(updateOsbar);
-  H25.startLoop();
-  if (location.search.indexOf("trainer") >= 0) buildTrainer();
-  /* visible fullscreen button (viewport corner, outside the 1:1 HMI) */
-  var fsb = document.createElement("div");
-  fsb.id = "fsbtn";
-  fsb.title = "To'liq ekran / Fullscreen (F)";
-  fsb.textContent = "\u26F6 TO'LIQ EKRAN";
-  fsb.onclick = function (e) { if (e) e.stopPropagation(); toggleFullscreen(); };
-  document.getElementById("viewport").appendChild(fsb);
-  var fsSync = function () {
-    fsb.textContent = document.fullscreenElement ? "\u2715 CHIQISH" : "\u26F6 TO'LIQ EKRAN";
+function renderEvents() {
+  $('events-body').innerHTML = H25.events
+    .map(function (e) {
+      return (
+        '<div class="event ' +
+        esc(e.type) +
+        '"><time>' +
+        e.t.toFixed(1) +
+        ' s</time><strong>' +
+        esc(e.type) +
+        '</strong><span>' +
+        esc(e.message) +
+        '</span></div>'
+      );
+    })
+    .join('');
+}
+function toggleFullscreen() {
+  if (document.fullscreenElement)
+    document.exitFullscreen().catch(function (e) {
+      message(e.message);
+    });
+  else if (document.documentElement.requestFullscreen)
+    document.documentElement.requestFullscreen().catch(function (e) {
+      message(e.message);
+    });
+}
+function unlockAudio() {
+  if (!nativeAudio) {
+    try {
+      nativeAudio = new (window.AudioContext || window.webkitAudioContext)();
+    } catch (e) {
+      message('Audio unavailable');
+    }
+  }
+  if (nativeAudio?.state === 'suspended')
+    nativeAudio.resume().catch(function () {});
+}
+function alarmTick() {
+  if (!soundOn || !nativeAudio || nativeAudio.state !== 'running') return;
+  var warn =
+      H25.tripped || H25.spreadAlarm || Object.values(H25.faults).some(Boolean),
+    now = performance.now();
+  if (!warn || now - lastTone < (H25.tripped ? 500 : 1400)) return;
+  lastTone = now;
+  var o = nativeAudio.createOscillator(),
+    g = nativeAudio.createGain();
+  o.frequency.value = H25.tripped ? 880 : 660;
+  g.gain.setValueAtTime(0.06, nativeAudio.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, nativeAudio.currentTime + 0.2);
+  o.connect(g);
+  g.connect(nativeAudio.destination);
+  o.start();
+  o.stop(nativeAudio.currentTime + 0.22);
+}
+function runSelfTest() {
+  var results = [];
+  function ok(n, c) {
+    results.push((c ? 'PASS' : 'FAIL') + ':' + n);
+  }
+  ok('native-no-raster', document.querySelectorAll('img').length === 0);
+  ok('screens-20', Object.keys(H25_SCREENS).length === 20);
+  ok(
+    'all-tags-finite',
+    Object.values(H25.tags).every(function (v) {
+      return typeof v === 'string' || Number.isFinite(v);
+    }),
+  );
+  ok(
+    'no-document-overflow',
+    document.documentElement.scrollWidth <= innerWidth &&
+      document.documentElement.scrollHeight <= innerHeight,
+  );
+  var el = document.createElement('div');
+  el.id = 'selftest-result';
+  el.hidden = true;
+  el.textContent = results.join(' | ');
+  document.body.appendChild(el);
+}
+window.addEventListener('DOMContentLoaded', function () {
+  [
+    SCR_STARTUP,
+    SCR_FFD,
+    SCR_SYNC,
+    SCR_FUELGAS,
+    SCR_LUBE,
+    SCR_GEN,
+    SCR_VENT,
+    SCR_IBH,
+    SCR_MOTORS,
+    SCR_BRG,
+    SCR_EXH,
+    SCR_VIB,
+    SCR_WS,
+    SCR_SC,
+    SCR_TIM,
+    SCR_TRIPM,
+    SCR_DR1,
+    SCR_DR2,
+    SCR_OS,
+    SCR_MENU,
+  ].forEach(function (s) {
+    H25_SCREENS[s.id] = s;
+  });
+  H25.init(
+    new URLSearchParams(location.search).get('cold') === '1' ? 'cold' : 'demo',
+  );
+  var nav = Object.keys(H25_SCREENS)
+    .map(function (id, i) {
+      return (
+        '<button class="nav-btn" data-screen="' +
+        id +
+        '"><span class="index">' +
+        String(i + 1).padStart(2, '0') +
+        '</span>' +
+        esc(H25_SCREENS[id].nav) +
+        '</button>'
+      );
+    })
+    .join('');
+  $('navigation').innerHTML = nav;
+  $('screen-select').innerHTML = Object.keys(H25_SCREENS)
+    .map(function (id) {
+      return (
+        '<option value="' + id + '">' + esc(H25_SCREENS[id].nav) + '</option>'
+      );
+    })
+    .join('');
+  $('navigation').onclick = function (e) {
+    var b = e.target.closest('[data-screen]');
+    if (b) loadScreen(b.dataset.screen);
   };
-  document.addEventListener("fullscreenchange", fsSync);
-  if (location.search.indexOf("fullscreen") >= 0) {
-    /* ?fullscreen=1: first click enters fullscreen (browser needs a gesture) */
-    var fsOnce = function () {
-      toggleFullscreen();
-      document.removeEventListener("click", fsOnce);
+  $('screen-select').onchange = function () {
+    loadScreen(this.value);
+  };
+  $('fsbtn').onclick = toggleFullscreen;
+  document.addEventListener('fullscreenchange', function () {
+    $('fsbtn').textContent = document.fullscreenElement
+      ? 'EXIT FULLSCREEN'
+      : 'FULLSCREEN';
+  });
+  $('sndbtn').onclick = function () {
+    unlockAudio();
+    soundOn = !soundOn;
+    this.textContent = soundOn ? 'SOUND ON' : 'SOUND OFF';
+    this.setAttribute('aria-pressed', String(soundOn));
+  };
+  $('events-button').onclick = function () {
+    renderEvents();
+    $('events-dialog').showModal();
+  };
+  $('events-close').onclick = function () {
+    $('events-dialog').close();
+  };
+  $('trainer-button').onclick = function () {
+    $('trainer').hidden = !$('trainer').hidden;
+    this.setAttribute('aria-pressed', String(!$('trainer').hidden));
+  };
+  $('cold-button').onclick = function () {
+    if (
+      confirm(
+        'Load cold/stopped scenario? Current scenario and counters will be reset.',
+      )
+    ) {
+      stopJogs();
+      H25.resetScenario('cold');
+      loadScreen(H25_current);
+    }
+  };
+  $('demo-button').onclick = function () {
+    if (
+      confirm(
+        'Load base-load demonstration? This is a scenario reset, not MASTER RESET.',
+      )
+    ) {
+      stopJogs();
+      H25.resetScenario('demo');
+      loadScreen(H25_current);
+    }
+  };
+  $('pause-button').onclick = function () {
+    stopJogs();
+    H25.paused = !H25.paused;
+    H25.log('CLOCK', H25.paused ? 'Paused' : 'Resumed');
+    refreshCustom();
+  };
+  $('reset-button').onclick = function () {
+    H25.masterReset();
+    refreshCustom();
+    message(H25.events[0].message);
+  };
+  $('trip-button').onclick = function () {
+    stopJogs();
+    H25.trip('EMERGENCY TRIP PUSHBUTTON', '9EX');
+    refreshCustom();
+    message(H25.tripCause);
+  };
+  document.querySelectorAll('[data-fault]').forEach(function (b) {
+    b.onclick = function () {
+      H25.setFault(b.dataset.fault, !H25.faults[b.dataset.fault]);
+      refreshCustom();
     };
-    document.addEventListener("click", fsOnce);
-  }
-  if (location.search.indexOf("selftest") >= 0) {
-    setTimeout(runSelfTest, 500);
-  }
-};
-
-/* Fault-injection trainer panel (?trainer=1). HMI stays 1:1 English;
- * this floating panel is outside the DIASYS screens, for instructors only. */
-function buildTrainer() {
-  var p = document.getElementById("trainer");
-  if (!p) {
-    p = document.createElement("div");
-    p.id = "trainer";
-    document.getElementById("stage").appendChild(p);
-  }
-  var F = H25.faults;
-  function btn(name, label) {
-    var on = F[name];
-    return '<button data-f="' + name + '" style="background:' +
-      (on ? 'rgb(255,0,0);color:#fff' : '#C0C0C0') + '">' + label +
-      (on ? " [ON]" : "") + "</button>";
-  }
-  p.innerHTML = "<b>TRAINER — fault injection</b><br>" +
-    btn("vib", "High vibration") + btn("exh", "Exhaust overtemp") +
-    btn("lube", "Lube-oil leak") + btn("fuel", "Fuel-gas low") +
-    '<button data-f="__clear">Clear + Reset</button>' +
-    "<div>Trip: " + (H25.tripped ? H25.tripCause : "—") + "</div>";
-  var bs = p.querySelectorAll("button");
-  for (var i = 0; i < bs.length; i++) {
-    bs[i].onclick = (function (b) {
-      return function () {
-        var f = b.getAttribute("data-f");
-        if (f === "__clear") { H25.clearFaults(); H25.masterReset(); }
-        else H25.setFault(f, !H25.faults[f]);
-      };
-    })(bs[i]);
-  }
-}
+  });
+  $('clear-faults').onclick = function () {
+    H25.clearFaults();
+    refreshCustom();
+  };
+  ['pointerup', 'pointercancel', 'keyup'].forEach(function (ev) {
+    document.addEventListener(ev, stopJogs);
+  });
+  window.addEventListener('blur', stopJogs);
+  document.addEventListener('visibilitychange', stopJogs);
+  document.addEventListener('pointerdown', unlockAudio, { once: true });
+  document.addEventListener('keydown', function (e) {
+    if (e.target.matches('input,select,textarea')) return;
+    if (e.key.toLowerCase() === 'f') toggleFullscreen();
+  });
+  var q = new URLSearchParams(location.search);
+  var kuURL = new URL($('ku-link').href);
+  kuURL.searchParams.set('session', q.get('session') || 'unit20-default');
+  $('ku-link').href = kuURL.href;
+  $('trainer').hidden = !q.has('trainer');
+  var faults = (q.get('fault') || '').split(',');
+  faults.forEach(function (f) {
+    if (f in H25.faults) H25.setFault(f, true);
+  });
+  var id = location.hash.slice(1) || q.get('screen') || 'startup';
+  loadScreen(H25_SCREENS[id] ? id : 'startup');
+  H25.onTick(refreshCustom);
+  H25.startLoop();
+  setInterval(function () {
+    if (H25.paused) refreshCustom();
+  }, 1000);
+  if (q.has('selftest')) runSelfTest();
+});

@@ -1,9 +1,6 @@
-/* Screen 14 - START CHECK. Full matrix 0-7 + Present Status.
- * Green = permissive OK, Red = inhibits start. Coords re-measured
- * from ref/14_start_check.png (page coords, crop y170). */
+/* Native view metadata. Legacy measurement coordinates retained for tag inventory only; not used for layout. */
 window.SCR_SC = {
   id: "sc",
-  bg: "ref/14_start_check.png",
   title: "14 START CHECK",
   nav: "START CHECK",
   navList: ["START-UP", "START CHECK", "TIMERS", "TRIP MONITOR", "DATA REPORT 1", "DATA REPORT 2", "MENU"],
@@ -60,5 +57,4 @@ window.SCR_SC = {
     {x:933, y:495, w:102, h:31, fs:10, label:"MASTER RESET", g:null, v:null, act:"reset"},
     {x:1039, y:494, w:69, h:32, fs:11, label:"TRIP", g:null, v:null, act:"trip"},
   ],
-  render: function (page) { renderOverlay(page, this); }
 };

@@ -1,35 +1,41 @@
-/* UNIT-20 build: MANBA bitta (repo ildizi), deploy_unit20/ faqat chiqish.
- * Qo'lda tahrirlanmaydi — har safar shu skript generatsiya qiladi:
- *   node build.js   (h25 + ku nusxalarini yangilaydi)
- * Shunda ikki nusxa ajralib ketmaydi (talab 5). */
-"use strict";
-const fs = require("fs");
-const path = require("path");
-
-const ROOT = __dirname;
-const OUT_H25 = path.join(ROOT, "deploy_unit20", "h25");
-
-function copyDir(src, dst, skip) {
-  fs.mkdirSync(dst, { recursive: true });
-  let n = 0;
-  for (const f of fs.readdirSync(src, { withFileTypes: true })) {
-    if (skip && skip.includes(f.name)) continue;
-    const s = path.join(src, f.name), d = path.join(dst, f.name);
-    if (f.isDirectory()) n += copyDir(s, d, skip);
-    else { fs.copyFileSync(s, d); n++; }
-  }
-  return n;
-}
-
-let total = 0;
-// h25: index + css + js + ref (manba: AUDIT/tests/tools/build o'zi chiqmaydi)
-fs.copyFileSync(path.join(ROOT, "index.html"), path.join(OUT_H25, "index.html"));
-total++;
-total += copyDir(path.join(ROOT, "css"), path.join(OUT_H25, "css"));
-total += copyDir(path.join(ROOT, "js"), path.join(OUT_H25, "js"));
-total += copyDir(path.join(ROOT, "ref"), path.join(OUT_H25, "ref"));
-
-console.log(`BUILD h25 -> deploy_unit20/h25: ${total} fayl`);
-// TODO(2D): KU manbai D:\\qozon\\simulyatsiya\\index.html shu repo'ga ko'chirilgach,
-// build.js ku nusxani ham generatsiya qiladi. Hozir ku qo'lda (muzlatilgan).
-console.log("BUILD ku: SKIP (2D-blokda ulanadi)");
+/* Reproducible native web/desktop artifact. deploy_unit20 is generated only. */
+'use strict';
+const fs = require('fs'),
+  path = require('path');
+const root = __dirname,
+  out = path.join(root, 'deploy_unit20');
+fs.rmSync(out, { recursive: true, force: true });
+fs.mkdirSync(path.join(out, 'h25'), { recursive: true });
+for (const name of ['index.html', 'css', 'js'])
+  fs.cpSync(path.join(root, name), path.join(out, 'h25', name), {
+    recursive: true,
+  });
+fs.cpSync(path.join(root, 'ku'), path.join(out, 'ku'), { recursive: true });
+const kuIndex = path.join(out, 'ku', 'index.html');
+fs.writeFileSync(
+  kuIndex,
+  fs
+    .readFileSync(kuIndex, 'utf8')
+    .replaceAll('../css/', '../h25/css/')
+    .replaceAll('../js/', '../h25/js/')
+    .replace(
+      /window\.UNIT20_H25_ENTRY\s*=\s*[\'\"]\.\.\/index\.html[\'\"]/,
+      "window.UNIT20_H25_ENTRY='../h25/index.html'",
+    ),
+);
+fs.copyFileSync(path.join(root, 'unit20.html'), path.join(out, 'index.html'));
+fs.writeFileSync(path.join(out, '.nojekyll'), '');
+fs.writeFileSync(
+  path.join(out, 'version.json'),
+  JSON.stringify(
+    {
+      version: require('./package.json').version,
+      renderer: 'native-svg-html',
+      sources: 'repository root',
+      model: 'educational, not OEM certified',
+    },
+    null,
+    2,
+  ) + '\n',
+);
+console.log('Built native H25 + KU-20. No reference images included.');

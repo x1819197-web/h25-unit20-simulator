@@ -1,7 +1,6 @@
-/* Screen 11 - EXHAUST. Pixel-measured overlays + live polar plot. */
+/* Native view metadata. Legacy measurement coordinates retained for tag inventory only; not used for layout. */
 window.SCR_EXH = {
   id: "exh",
-  bg: "ref/11_exhaust.png",
   title: "11 EXHAUST",
   nav: "EXHAUST",
   navList: ["START-UP", "BEARING OIL", "EXHAUST", "VIBRATION", "WHEELSPACE", "MENU"],
@@ -47,5 +46,4 @@ window.SCR_EXH = {
     {x:933, y:462, w:102, h:37, fs:10, label:"MASTER RESET", g:null, v:null, act:"reset"},
     {x:1038, y:462, w:72, h:37, fs:11, label:"TRIP", g:null, v:null, act:"trip"},
   ],
-  render: function (page) { renderOverlay(page, this); }
 };

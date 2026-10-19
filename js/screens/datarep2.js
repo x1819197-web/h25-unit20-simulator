@@ -1,7 +1,6 @@
-/* Screen 18 - DATA REPORT 2. 4 live tables over ref/18_data_report_2.png. */
+/* Native view metadata. Legacy measurement coordinates retained for tag inventory only; not used for layout. */
 window.SCR_DR2 = {
   id: "dr2",
-  bg: "ref/18_data_report_2.png",
   title: "18 DATA REPORT 2",
   nav: "DATA REPORT 2",
   navList: ["START-UP", "START CHECK", "TIMERS", "TRIP MONITOR", "DATA REPORT 1", "DATA REPORT 2", "MENU"],
@@ -98,5 +97,4 @@ window.SCR_DR2 = {
     ]},
   ],
   buttons: [],
-  render: function (page) { renderOverlay(page, this); }
 };

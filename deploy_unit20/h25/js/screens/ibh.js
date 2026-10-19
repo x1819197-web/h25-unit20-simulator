@@ -1,10 +1,10 @@
-/* Screen 8 - IBH CONTROL. Pixel-measured overlays. */
+/* Native view metadata. Legacy measurement coordinates retained for tag inventory only; not used for layout. */
 window.SCR_IBH = {
   id: "ibh",
-  bg: "ref/08_ibh_control.png",
   title: "8 IBH",
   nav: "IBH CONTROL",
   navList: ["START-UP", "FFD CONTROL", "SYNCHRO. &EXC. OPE.", "FUEL GAS", "LUBE OIL", "GENERATOR", "VENTILATION", "IBH CONTROL", "MOTORS", "MENU"],
+  basket: {x:744, y:130, d:86},
   values: [
     ["INLET_T1", 123, 68, 75, 18, 12, "degC"],
     ["INLET_T2", 123, 142, 75, 17, 12, "degC"],
@@ -41,5 +41,4 @@ window.SCR_IBH = {
     {x:933, y:462, w:102, h:37, fs:10, label:"MASTER RESET", g:null, v:null, act:"reset"},
     {x:1038, y:462, w:72, h:37, fs:11, label:"TRIP", g:null, v:null, act:"trip"},
   ],
-  render: function (page) { renderOverlay(page, this); }
 };

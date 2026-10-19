@@ -1,7 +1,6 @@
-/* Screen 2 - FFD CONTROL. Pixel-measured overlays on ref/02_ffd_control.png. */
+/* Native view metadata. Legacy measurement coordinates retained for tag inventory only; not used for layout. */
 window.SCR_FFD = {
   id: "ffd",
-  bg: "ref/02_ffd_control.png",
   title: "2 FFD CONTROL",
   nav: "FFD CONTROL",
   navList: ["START-UP", "FFD CONTROL", "SYNCHRO. &EXC. OPE.", "FUEL GAS", "LUBE OIL", "GENERATOR", "VENTILATION", "IBH CONTROL", "MOTORS", "MENU"],
@@ -69,5 +68,4 @@ window.SCR_FFD = {
     {x:932, y:465, w:85, h:34, fs:10, label:"MASTER RESET", g:null, v:null, act:"reset"},
     {x:1018, y:465, w:88, h:34, fs:11, label:"TRIP", g:null, v:null, act:"trip"},
   ],
-  render: function (page) { renderOverlay(page, this); }
 };

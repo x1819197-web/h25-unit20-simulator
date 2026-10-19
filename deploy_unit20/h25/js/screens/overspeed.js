@@ -1,8 +1,6 @@
-/* Screen 19 - OVERSPEED. Mimic + overspeed test + lift calibration.
- * Ref: ref/19_overspeed.png. All buttons live. */
+/* Native view metadata. Legacy measurement coordinates retained for tag inventory only; not used for layout. */
 window.SCR_OS = {
   id: "os",
-  bg: "ref/19_overspeed.png",
   title: "OVERSPEED",
   nav: "OVERSPEED",
   navList: ["START-UP", "OVERSPEED", "MENU"],
@@ -14,7 +12,6 @@ window.SCR_OS = {
     ["F2_2_GCV", 356, 45, 53, 13, 10, "%"],
     ["F2_3_GCV", 356, 63, 53, 13, 10, "%"],
     ["F2_4_GCV", 356, 81, 53, 13, 10, "%"],
-    ["SRV_POS", 180, 83, 53, 12, 10, "%"],
     ["ALLOW_SPREAD", 535, 23, 72, 15, 12, "degC"],
     ["SPREAD_1", 535, 57, 72, 15, 12, "degC"],
     ["SPREAD_2", 535, 90, 72, 15, 12, "degC"],
@@ -54,13 +51,13 @@ window.SCR_OS = {
   osbar: {x:866, y:274, w:176, h:160},
   buttons: [
     /* lift calibration — bitta yaxlit tablitsa (uzluksiz blok) */
-    {x:1118, y:60, w:155, h:17, fs:8, label:"LIFT CALIBRATION (SRV)", g:"lift", v:"SRV", act:"lift"},
-    {x:1118, y:77, w:155, h:17, fs:8, label:"LIFT CALIBRATION (F1 GCV)", g:"lift", v:"F1", act:"lift"},
-    {x:1118, y:94, w:155, h:17, fs:8, label:"LIFT CALIBRATION (F2-1 GCV)", g:"lift", v:"F2-1", act:"lift"},
-    {x:1118, y:111, w:155, h:17, fs:8, label:"LIFT CALIBRATION (F2-2 GCV)", g:"lift", v:"F2-2", act:"lift"},
-    {x:1118, y:128, w:155, h:17, fs:8, label:"LIFT CALIBRATION (F2-3 GCV)", g:"lift", v:"F2-3", act:"lift"},
-    {x:1118, y:145, w:155, h:17, fs:8, label:"LIFT CALIBRATION (F2-4 GCV)", g:"lift", v:"F2-4", act:"lift"},
-    {x:1118, y:162, w:155, h:17, fs:8, label:"LIFT CALIBRATION (IGV)", g:"lift", v:"IGV", act:"lift"},
+    {x:1115, y:28, w:160, h:20, fs:8, label:"LIFT CALIBRATION (SRV)", g:"lift", v:"SRV", act:"lift"},
+    {x:1115, y:50, w:160, h:20, fs:8, label:"LIFT CALIBRATION (F1 GCV)", g:"lift", v:"F1", act:"lift"},
+    {x:1115, y:72, w:160, h:20, fs:8, label:"LIFT CALIBRATION (F2-1 GCV)", g:"lift", v:"F2-1", act:"lift"},
+    {x:1115, y:93, w:160, h:20, fs:8, label:"LIFT CALIBRATION (F2-2 GCV)", g:"lift", v:"F2-2", act:"lift"},
+    {x:1115, y:115, w:160, h:20, fs:8, label:"LIFT CALIBRATION (F2-3 GCV)", g:"lift", v:"F2-3", act:"lift"},
+    {x:1115, y:136, w:160, h:20, fs:8, label:"LIFT CALIBRATION (F2-4 GCV)", g:"lift", v:"F2-4", act:"lift"},
+    {x:1115, y:158, w:160, h:20, fs:8, label:"LIFT CALIBRATION (IGV)", g:"lift", v:"IGV", act:"lift"},
     /* over speed test select (panel ichida) */
     {x:652, y:303, w:70, h:24, fs:10, label:"ENABLE", g:"osTest", v:"ENABLE", act:"os-enable"},
     {x:652, y:327, w:70, h:24, fs:10, label:"DISABLE", g:"osTest", v:"DISABLE", act:"os-disable"},
@@ -75,5 +72,4 @@ window.SCR_OS = {
     {x:933, y:467, w:102, h:30, fs:10, label:"MASTER RESET", g:null, v:null, act:"reset"},
     {x:1039, y:466, w:69, h:32, fs:11, label:"TRIP", g:null, v:null, act:"trip"},
   ],
-  render: function (page) { renderOverlay(page, this); }
 };

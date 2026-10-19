@@ -1,10 +1,10 @@
-/* Screen 4 - FUEL GAS. Pixel-measured overlays. */
+/* Native view metadata. Legacy measurement coordinates retained for tag inventory only; not used for layout. */
 window.SCR_FUELGAS = {
   id: "fuelgas",
-  bg: "ref/04_fuel_gas.png",
   title: "4 FUEL GAS",
   nav: "FUEL GAS",
   navList: ["START-UP", "FFD CONTROL", "SYNCHRO. &EXC. OPE.", "FUEL GAS", "LUBE OIL", "GENERATOR", "VENTILATION", "IBH CONTROL", "MOTORS", "MENU"],
+  basket: {x:928, y:202, d:84},
   values: [
     ["SPEED_PCT", 168, 80, 79, 12, 11, "%"],
     ["GEN_POWER", 168, 98, 79, 12, 11, "MW"],
@@ -41,5 +41,4 @@ window.SCR_FUELGAS = {
     {x:933, y:463, w:102, h:37, fs:10, label:"MASTER RESET", g:null, v:null, act:"reset"},
     {x:1038, y:463, w:72, h:37, fs:11, label:"TRIP", g:null, v:null, act:"trip"},
   ],
-  render: function (page) { renderOverlay(page, this); }
 };

@@ -1,7 +1,6 @@
-/* Screen 7 - VENTILATION. Pixel-measured overlays. */
+/* Native view metadata. Legacy measurement coordinates retained for tag inventory only; not used for layout. */
 window.SCR_VENT = {
   id: "vent",
-  bg: "ref/07_ventilation.png",
   title: "7 VENTILATION",
   nav: "VENTILATION",
   navList: ["START-UP", "FFD CONTROL", "SYNCHRO. &EXC. OPE.", "FUEL GAS", "LUBE OIL", "GENERATOR", "VENTILATION", "IBH CONTROL", "MOTORS", "MENU"],
@@ -20,22 +19,21 @@ window.SCR_VENT = {
     ["SPEED_PCT", 949, 319, 69, 16, 12, "%"],
   ],
   motors: [
-    {id:"evac1", x:275, y:128, d:23},
-    {id:"ven1", x:726, y:113, d:22},
-    {id:"ven2", x:818, y:113, d:22},
-    {id:"bc1", x:686, y:404, d:21},
-    {id:"bc2", x:774, y:404, d:21},
+    {id:"evac1", x:281, y:132, d:26},
+    {id:"ven1", x:722, y:113, d:24},
+    {id:"ven2", x:817, y:113, d:24},
+    {id:"bc1", x:687, y:405, d:24},
+    {id:"bc2", x:776, y:405, d:24},
   ],
   pumps: [
-    {id:"evac1", x:252, y:128, d:23, dir:"fan"},
-    {id:"ven1", x:725, y:135, d:25, dir:"fan"},
-    {id:"ven2", x:817, y:135, d:25, dir:"fan"},
-    {id:"bc1", x:707, y:404, d:22, dir:"fan"},
-    {id:"bc2", x:795, y:404, d:22, dir:"fan"},
+    {id:"evac1", x:253, y:131, d:26, dir:"fan"},
+    {id:"ven1", x:725, y:132, d:24, dir:"fan"},
+    {id:"ven2", x:818, y:132, d:24, dir:"fan"},
+    {id:"bc1", x:704, y:403, d:24, dir:"fan"},
+    {id:"bc2", x:792, y:403, d:24, dir:"fan"},
   ],
   buttons: [
     {x:933, y:462, w:102, h:37, fs:10, label:"MASTER RESET", g:null, v:null, act:"reset"},
     {x:1038, y:462, w:72, h:37, fs:11, label:"TRIP", g:null, v:null, act:"trip"},
   ],
-  render: function (page) { renderOverlay(page, this); }
 };

@@ -1,7 +1,6 @@
-/* Screen 11 - EXHAUST. Pixel-measured overlays + live polar plot. */
+/* Native view metadata. Legacy measurement coordinates retained for tag inventory only; not used for layout. */
 window.SCR_EXH = {
   id: "exh",
-  bg: "ref/11_exhaust.png",
   title: "11 EXHAUST",
   nav: "EXHAUST",
   navList: ["START-UP", "BEARING OIL", "EXHAUST", "VIBRATION", "WHEELSPACE", "MENU"],
@@ -12,17 +11,17 @@ window.SCR_EXH = {
     ["TC04", 578, 137, 65, 13, 10, "degC"],
     ["TC05", 602, 210, 67, 14, 10, "degC"],
     ["TC06", 602, 299, 66, 14, 9, "degC"],
-    ["TC07", 579, 373, 52, 12, 9, "degC"],
+    ["TC07", 579, 371, 66, 13, 9, "degC"],
     ["TC08", 527, 433, 66, 13, 10, "degC"],
     ["TC09", 458, 471, 65, 13, 10, "degC"],
     ["TC10", 366, 484, 65, 13, 10, "degC"],
     ["TC11", 269, 471, 66, 14, 10, "degC"],
     ["TC12", 189, 433, 66, 13, 10, "degC"],
-    ["TC13", 135, 373, 52, 12, 9, "degC"],
-    ["TC14", 103, 301, 53, 13, 9, "degC"],
+    ["TC13", 135, 371, 66, 13, 9, "degC"],
+    ["TC14", 103, 301, 66, 13, 9, "degC"],
     ["TC15", 101, 211, 67, 13, 10, "degC"],
     ["TC16", 134, 137, 65, 13, 10, "degC"],
-    ["TC17", 185, 79, 52, 12, 9, "degC"],
+    ["TC17", 185, 79, 66, 13, 9, "degC"],
     ["TC18", 269, 39, 65, 13, 10, "degC"],
     ["FOFFD", 927, 57, 147, 17, 11, "FFD"],
     ["SPEED", 927, 79, 147, 17, 11, "min-1"],
@@ -47,5 +46,4 @@ window.SCR_EXH = {
     {x:933, y:462, w:102, h:37, fs:10, label:"MASTER RESET", g:null, v:null, act:"reset"},
     {x:1038, y:462, w:72, h:37, fs:11, label:"TRIP", g:null, v:null, act:"trip"},
   ],
-  render: function (page) { renderOverlay(page, this); }
 };

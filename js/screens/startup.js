@@ -1,7 +1,6 @@
-/* Screen 1 - START-UP. Pixel-measured overlays on ref/01_startup.png. */
+/* Native view metadata. Legacy measurement coordinates retained for tag inventory only; not used for layout. */
 window.SCR_STARTUP = {
   id: "startup",
-  bg: "ref/01_startup.png",
   title: "1 START-UP",
   nav: "START-UP",
   basket: {x:421, y:8, d:95},
@@ -98,5 +97,4 @@ window.SCR_STARTUP = {
     {x:820, y:459, w:95, h:20, fs:12, label:"", g:null, v:null, act:"edit-load", clear:1},
     {x:1018, y:465, w:88, h:34, fs:11, label:"TRIP", g:null, v:null, act:"trip"},
   ],
-  render: function (page) { renderOverlay(page, this); }
 };

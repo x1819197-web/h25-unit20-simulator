@@ -1,3 +1,5 @@
+> ARCHIVED: this document describes the pre-v3 photo-overlay implementation. Current status: README.md and REBUILD-NOTES.md.
+
 # H25 SCADA Simulator — PROGRESS (session handoff)
 
 Date: 2026-10-01. Project: `C:\Users\X\h25-scada-simulator` (open `index.html`).

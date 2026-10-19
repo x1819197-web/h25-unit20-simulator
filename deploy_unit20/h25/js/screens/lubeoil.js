@@ -1,7 +1,6 @@
-/* Screen 5 - LUBE OIL. Pixel-measured overlays. */
+/* Native view metadata. Legacy measurement coordinates retained for tag inventory only; not used for layout. */
 window.SCR_LUBE = {
   id: "lube",
-  bg: "ref/05_lube_oil.png",
   title: "5 LUBE OIL",
   nav: "LUBE OIL",
   navList: ["START-UP", "FFD CONTROL", "SYNCHRO. &EXC. OPE.", "FUEL GAS", "LUBE OIL", "GENERATOR", "VENTILATION", "IBH CONTROL", "MOTORS", "MENU"],
@@ -25,26 +24,25 @@ window.SCR_LUBE = {
     ["LO_TANK_L", 250, 452, 68, 16, 11, "%"],
   ],
   motors: [
-    {id:"mop1", x:296, y:474, d:20},
-    {id:"mop2", x:381, y:474, d:20},
-    {id:"eop", x:468, y:474, d:20},
-    {id:"hop1", x:745, y:36, d:21},
-    {id:"hop2", x:704, y:78, d:22},
-    {id:"mist1", x:853, y:374, d:22},
-    {id:"mist2", x:855, y:430, d:22},
+    {id:"mop1", x:289, y:476, d:28},
+    {id:"mop2", x:387, y:476, d:28},
+    {id:"eop", x:482, y:476, d:28},
+    {id:"hop1", x:755, y:46, d:22},
+    {id:"hop2", x:705, y:84, d:22},
+    {id:"mist1", x:859, y:374, d:22},
+    {id:"mist2", x:859, y:418, d:22},
   ],
   pumps: [
-    {id:"mop1", x:317, y:474, d:20, dir:"up"},
-    {id:"mop2", x:400, y:474, d:20, dir:"up"},
-    {id:"eop", x:488, y:474, d:20, dir:"up"},
-    {id:"hop1", x:744, y:58, d:24, dir:"right"},
-    {id:"hop2", x:704, y:99, d:22, dir:"right"},
-    {id:"mist1", x:852, y:398, d:24, dir:"fan"},
-    {id:"mist2", x:854, y:452, d:23, dir:"fan"},
+    {id:"mop1", x:316, y:476, d:28, dir:"up"},
+    {id:"mop2", x:414, y:476, d:28, dir:"up"},
+    {id:"eop", x:509, y:476, d:28, dir:"up"},
+    {id:"hop1", x:753, y:66, d:22, dir:"right"},
+    {id:"hop2", x:705, y:106, d:22, dir:"right"},
+    {id:"mist1", x:857, y:396, d:22, dir:"fan"},
+    {id:"mist2", x:857, y:440, d:22, dir:"fan"},
   ],
   buttons: [
-    {x:930, y:461, w:108, h:37, fs:10, label:"MASTER RESET", g:null, v:null, act:"reset"},
-    {x:1037, y:461, w:73, h:37, fs:11, label:"TRIP", g:null, v:null, act:"trip"},
+    {x:1006, y:464, w:105, h:37, fs:10, label:"MASTER RESET", g:null, v:null, act:"reset"},
+    {x:1112, y:464, w:71, h:37, fs:11, label:"TRIP", g:null, v:null, act:"trip"},
   ],
-  render: function (page) { renderOverlay(page, this); }
 };

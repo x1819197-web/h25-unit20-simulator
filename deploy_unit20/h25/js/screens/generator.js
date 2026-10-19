@@ -1,7 +1,6 @@
-/* Screen 6 - GENERATOR. Pixel-measured overlays. */
+/* Native view metadata. Legacy measurement coordinates retained for tag inventory only; not used for layout. */
 window.SCR_GEN = {
   id: "gen",
-  bg: "ref/06_generator.png",
   title: "6 GENERATOR(1)",
   nav: "GENERATOR",
   navList: ["START-UP", "FFD CONTROL", "SYNCHRO. &EXC. OPE.", "FUEL GAS", "LUBE OIL", "GENERATOR", "VENTILATION", "IBH CONTROL", "MOTORS", "MENU"],
@@ -36,14 +35,14 @@ window.SCR_GEN = {
     ["LUBE_HDR_T", 175, 440, 80, 13, 10, "degC"],
   ],
   motors: [
-    {id:"gfc3", x:321, y:59, d:20},
-    {id:"gfc2", x:460, y:59, d:20},
-    {id:"gfc1", x:607, y:59, d:20},
+    {id:"gfc3", x:314, y:52, d:24},
+    {id:"gfc2", x:457, y:53, d:24},
+    {id:"gfc1", x:597, y:53, d:24},
   ],
   pumps: [
-    {id:"gfc3", x:300, y:59, d:20, dir:"down"},
-    {id:"gfc2", x:440, y:59, d:20, dir:"down"},
-    {id:"gfc1", x:586, y:59, d:20, dir:"down"},
+    {id:"gfc3", x:298, y:54, d:24, dir:"down"},
+    {id:"gfc2", x:437, y:54, d:24, dir:"down"},
+    {id:"gfc1", x:582, y:54, d:24, dir:"down"},
   ],
   syms: [
     {x:998, y:30, w:31, h:17, id:"sym41"},
@@ -53,5 +52,4 @@ window.SCR_GEN = {
     {x:932, y:488, w:106, h:36, fs:10, label:"MASTER RESET", g:null, v:null, act:"reset"},
     {x:1037, y:488, w:74, h:36, fs:11, label:"TRIP", g:null, v:null, act:"trip"},
   ],
-  render: function (page) { renderOverlay(page, this); }
 };

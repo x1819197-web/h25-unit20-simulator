@@ -1,8 +1,6 @@
-/* Screen 19 - OVERSPEED. Mimic + overspeed test + lift calibration.
- * Ref: ref/19_overspeed.png. All buttons live. */
+/* Native view metadata. Legacy measurement coordinates retained for tag inventory only; not used for layout. */
 window.SCR_OS = {
   id: "os",
-  bg: "ref/19_overspeed.png",
   title: "OVERSPEED",
   nav: "OVERSPEED",
   navList: ["START-UP", "OVERSPEED", "MENU"],
@@ -74,5 +72,4 @@ window.SCR_OS = {
     {x:933, y:467, w:102, h:30, fs:10, label:"MASTER RESET", g:null, v:null, act:"reset"},
     {x:1039, y:466, w:69, h:32, fs:11, label:"TRIP", g:null, v:null, act:"trip"},
   ],
-  render: function (page) { renderOverlay(page, this); }
 };

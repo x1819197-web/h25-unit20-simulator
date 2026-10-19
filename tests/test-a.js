@@ -49,18 +49,14 @@ vm.createContext(sb);
 vm.runInContext(fs.readFileSync(path.join(ROOT, "js", "engine.js"), "utf8"), sb);
 const H25 = sb.window.H25;
 
-/* ---- T2: poligon markazi = halqalar markazi (piksel aniq) ---- */
+/* ---- T2: native HMI contract (legacy photo geometry is no longer relevant) ---- */
 (function () {
-  const src = fs.readFileSync(path.join(ROOT, "js", "screens", "exhaust.js"), "utf8");
-  const m = src.match(/polar:\s*\{x:(\d+),\s*y:(\d+),\s*size:(\d+),\s*c:(\d+),\s*r:(\d+)\}/);
-  ok("T2a: polar geometriya topildi", !!m);
-  if (m) {
-    const x = +m[1], y = +m[2], c = +m[4], r = +m[5];
-    const P = global.H25_CFG.PLOT;
-    ok("T2b: markaz x (canvas+c == halqa)", x + c === P.cxPage, `${x}+${c}=${x + c} vs ${P.cxPage}`);
-    ok("T2c: markaz y (canvas+c == halqa)", y + c === P.cyPage, `${y}+${c}=${y + c} vs ${P.cyPage}`);
-    ok("T2d: radius == tashqi halqa R", r === P.R, `${r} vs ${P.R}`);
-  }
+  const html = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
+  const app = fs.readFileSync(path.join(ROOT, "js", "app.js"), "utf8");
+  ok("T2a: no raster background in HTML", !/<img|refbg/i.test(html));
+  ok("T2b: native SVG renderer present", app.includes('viewBox="0 0 900 280"'));
+  ok("T2c: semantic native buttons", app.includes('<button type="button"'));
+  ok("T2d: no runtime reference image", !/ref\/.*\.png/.test(app));
 })();
 
 /* ---- T3: radius formulasi ---- */
@@ -161,13 +157,11 @@ const H25 = sb.window.H25;
     EXM.polarR(m600, 184).toFixed(1));
 })();
 
-/* ---- T9: exhaust maydonlari quti ichida (static) ---- */
+/* ---- T9: all exhaust tags exist in the central registry ---- */
 (function () {
-  const src = fs.readFileSync(path.join(ROOT, "js", "screens", "exhaust.js"), "utf8");
-  const vals = [...src.matchAll(/\["(\w+)",\s*(\d+),\s*(\d+),\s*(\d+),\s*(\d+),/g)];
-  const out = vals.filter(m => (+m[2] + +m[4] > 1108) || (+m[3] + +m[5] > 506));
-  ok(`T9: exhaust maydonlar qutida (${vals.length} ta)`, out.length === 0,
-    out.map(m => m[1]).join(","));
+ const src = fs.readFileSync(path.join(ROOT, "js", "screens", "exhaust.js"), "utf8");
+ const tags = [...src.matchAll(/\["(\w+)",/g)].map(m => m[1]);
+ ok("T9: exhaust channels registered", tags.length >= 32 && tags.every(k => k in global.H25_TAGS));
 })();
 
 console.log(`\n2A TEST: ${pass} pass, ${fail} fail`);

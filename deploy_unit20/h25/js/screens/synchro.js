@@ -1,7 +1,6 @@
-/* Screen 3 - SYNCHRO. &EXC. OPE. Pixel-measured overlays. */
+/* Native view metadata. Legacy measurement coordinates retained for tag inventory only; not used for layout. */
 window.SCR_SYNC = {
   id: "sync",
-  bg: "ref/03_synchro_exc.png",
   title: "3 SYNCHRO. &EXC. OPE.",
   nav: "SYNCHRO. &EXC. OPE.",
   navList: ["START-UP", "FFD CONTROL", "SYNCHRO. &EXC. OPE.", "FUEL GAS", "LUBE OIL", "GENERATOR", "VENTILATION", "IBH CONTROL", "MOTORS", "MENU"],
@@ -38,16 +37,16 @@ window.SCR_SYNC = {
     {x:954, y:110, w:52, h:19, fs:10, label:"TCP-HMI", g:"s43OPE", v:"TCP-HMI", act:"press"},
     {x:954, y:129, w:52, h:17, fs:10, label:"GPP", g:"s43OPE", v:"GPP", act:"press"},
     {x:1018, y:116, w:56, h:33, fs:10, label:"RELEASE", g:null, v:null, act:"release"},
-    {x:664, y:234, w:52, h:19, fs:11, label:"AVR", g:"avrMode", v:"AVR", act:"press"},
-    {x:664, y:251, w:52, h:19, fs:11, label:"AER", g:"avrMode", v:"AER", act:"press"},
+    {x:664, y:234, w:52, h:18, fs:11, label:"AVR", g:"avrMode", v:"AVR", act:"press"},
+    {x:664, y:253, w:52, h:18, fs:11, label:"AER", g:"avrMode", v:"AER", act:"press"},
     {x:744, y:234, w:52, h:19, fs:11, label:"RAISE", g:null, v:null, act:"vraise"},
     {x:744, y:254, w:52, h:17, fs:11, label:"LOWER", g:null, v:null, act:"vlower"},
     {x:824, y:234, w:52, h:19, fs:11, label:"RAISE", g:null, v:null, act:"iraise"},
     {x:824, y:254, w:52, h:17, fs:11, label:"LOWER", g:null, v:null, act:"ilower"},
-    {x:904, y:234, w:53, h:19, fs:11, label:"AUTO", g:"fieldMode", v:"AUTO", act:"press"},
-    {x:904, y:251, w:53, h:19, fs:11, label:"MANUAL", g:"fieldMode", v:"MANUAL", act:"press"},
-    {x:904, y:272, w:53, h:19, fs:11, label:"CLOSE", g:"fieldClose", v:"CLOSED", act:"close41"},
-    {x:904, y:289, w:53, h:20, fs:11, label:"OFF", g:null, v:null, act:"open41"},
+    {x:904, y:234, w:53, h:18, fs:11, label:"AUTO", g:"fieldMode", v:"AUTO", act:"press"},
+    {x:904, y:253, w:53, h:18, fs:11, label:"MANUAL", g:"fieldMode", v:"MANUAL", act:"press"},
+    {x:904, y:272, w:53, h:18, fs:11, label:"CLOSE", g:"fieldClose", v:"CLOSED", act:"close41"},
+    {x:904, y:291, w:53, h:18, fs:11, label:"OFF", g:null, v:null, act:"open41"},
     {x:985, y:234, w:52, h:19, fs:11, label:"ON", g:"pss", v:"ON", act:"press"},
     {x:985, y:253, w:52, h:19, fs:11, label:"OFF", g:"pss", v:"OFF", act:"press"},
     {x:933, y:463, w:102, h:37, fs:10, label:"MASTER RESET", g:null, v:null, act:"reset"},
@@ -67,5 +66,4 @@ window.SCR_SYNC = {
     {x:391, y:197, w:21, h:29, id:"sym52G"},
     {x:546, y:255, w:21, h:32, id:"sym41"},
   ],
-  render: function (page) { renderOverlay(page, this); }
 };

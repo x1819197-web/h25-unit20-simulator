@@ -1,0 +1,3 @@
+# Build on Windows. Edge WebView2 runtime must be installed separately.
+pywebview==5.4
+pyinstaller==6.16.0
