@@ -29,11 +29,12 @@ window.H25_CFG = {
     tauMetalRun: 120, // TODO(Q3): ish rejimida metall massasi (s)
     tauMetalCool: 330,// TODO(Q3): flame-off metall sekin inersiyasi (s) — 10 min da deyarli nol
     metalW: 0.65,     // TODO(Q3): ko'rsatkichdagi metall ulushi (0.35 gaz + 0.65 metall)
-    biasMin: -4, biasMax: 4, // TODO(Q3): individual siljish oralig'i (degC), seedli
+    biasMin: 0, biasMax: 0, // FOYDALANUVCHI TALABI: TC lar referens nuqtada
+    // qoqiladi (displeyda suzish yo'q); dinamika (yuk/trip javobi) saqlangan
     seed: 20,         // takrorlanuvchi seed (UNIT-20)
-    noiseMax: 0.3,    // shovqin chegarasi (degC) — bundan oshmaydi
+    noiseMax: 0,    // shovqin o'chirilgan (displeyda miltillash yo'q)
     noiseT1: 47, noiseT2: 23, // TODO(Q3): past chastotali shovqin davrlari (s)
-    noiseA1: 0.12, noiseA2: 0.08
+    noiseA1: 0, noiseA2: 0
   },
 
   /* ---- exhaust harorat / spread (FAQAT 18 TC dan) ---- */

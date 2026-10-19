@@ -4,6 +4,7 @@ window.SCR_STARTUP = {
   bg: "ref/01_startup.png",
   title: "1 START-UP",
   nav: "START-UP",
+  basket: {x:421, y:8, d:95},
   values: [
     ["FUEL_GAS_T", 75, 34, 71, 16, 12, "degC"],
     ["FUEL_GAS_P", 75, 53, 71, 16, 12, "MPa"],

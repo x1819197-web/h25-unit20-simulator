@@ -5,6 +5,7 @@ window.SCR_IBH = {
   title: "8 IBH",
   nav: "IBH CONTROL",
   navList: ["START-UP", "FFD CONTROL", "SYNCHRO. &EXC. OPE.", "FUEL GAS", "LUBE OIL", "GENERATOR", "VENTILATION", "IBH CONTROL", "MOTORS", "MENU"],
+  basket: {x:744, y:130, d:86},
   values: [
     ["INLET_T1", 123, 68, 75, 18, 12, "degC"],
     ["INLET_T2", 123, 142, 75, 17, 12, "degC"],

@@ -89,6 +89,19 @@ window.H25 = {
     this._exhFaultOn = false;
     this._spreadSt = { t: 0, alarm: false };
     this.spreadAlarm = false;
+    /* Displey kalibrovkasi (FOYDALANUVCHI TALABI): baza rejimida EXH/SPREAD
+     * kataklar referens qiymatni ANIQ ko'rsatishi kerak. Hisoblangan
+     * (dinamik) qiymatga doimiy kalibrovka qo'shiladi — dinamika
+     * (yuk/trip/fault dagi o'zgarishlar) to'liq saqlanadi. */
+    try {
+      var _refs = [];
+      for (var _ci = 1; _ci <= 18; _ci++) _refs.push(H25_TAGS[this.tcTag(_ci)].v);
+      var _sp0 = H25_EXM.exSpreads(_refs);
+      this._calEXH = H25_TAGS["EXH_T"].v - H25_EXM.exTempMean(_refs);
+      this._calS1 = H25_TAGS["SPREAD_1"].v - _sp0.s1;
+      this._calS2 = H25_TAGS["SPREAD_2"].v - _sp0.s2;
+      this._calS3 = H25_TAGS["EXH_SPREAD_3"].v - _sp0.s3;
+    } catch (e) { this._calEXH = 0; this._calS1 = 0; this._calS2 = 0; this._calS3 = 0; }
     /* ?fault=vib,exh,lube,fuel preselects trainer faults */
     try {
       var m = (location.search || "").match(/fault=([^&]+)/);
@@ -129,9 +142,11 @@ window.H25 = {
     var T = this.tags, EXM = H25_EXM, tcs = [];
     for (var i = 1; i <= 18; i++) tcs.push(T[this.tcTag(i)]);
     var mean = EXM.exTempMean(tcs);
-    T["EXH_T"] = mean;
+    T["EXH_T"] = mean + (this._calEXH || 0);
     var sp = EXM.exSpreads(tcs);
-    T["SPREAD_1"] = sp.s1; T["SPREAD_2"] = sp.s2; T["SPREAD_3"] = sp.s3;
+    T["SPREAD_1"] = sp.s1 + (this._calS1 || 0);
+    T["SPREAD_2"] = sp.s2 + (this._calS2 || 0);
+    T["SPREAD_3"] = sp.s3 + (this._calS3 || 0);
     T["ALLOW_SPREAD"] = EXM.allowSpread(T["GEN_POWER"] || 0);
     for (var j = 1; j <= 18; j++) {
       var ct = "CT" + (j < 10 ? "0" + j : j);
@@ -251,6 +266,13 @@ window.H25 = {
       T["GEN_POWER"] = Math.max(0, T["GEN_POWER"] - 1.2);
       T["MW_FDBK"] = T["GEN_POWER"];
       T["FOFFD"] = Math.max(0, T["FOFFD"] - 3.0);
+      /* fuel cut: stop/governor valves drive shut (burners go out) */
+      T["F1_GCV"] = Math.max(0, (T["F1_GCV"] || 0) - 5);
+      T["F2_1_GCV"] = Math.max(0, (T["F2_1_GCV"] || 0) - 5);
+      T["F2_2_GCV"] = Math.max(0, (T["F2_2_GCV"] || 0) - 5);
+      T["F2_3_GCV"] = Math.max(0, (T["F2_3_GCV"] || 0) - 5);
+      T["F2_4_GCV"] = Math.max(0, (T["F2_4_GCV"] || 0) - 5);
+      T["SRV_POS"] = Math.max(0, (T["SRV_POS"] || 0) - 5);
       T["SPEED"] = Math.max(0, T["SPEED"] - 180);
       T["SPEED_PCT"] = T["SPEED"] / 72.8;
       T["GEN_A"] = T["GEN_POWER"] * 53.05;
@@ -275,14 +297,11 @@ window.H25 = {
        * Birinchi darajali kechikish (lag) — qiymatlar sakramaydi,
        * original SCADA dagi kabi silliq intiladi. */
       /* Seedli silliq shovqin (2A): har kadrda yangi Math.random YO'Q.
-       * Bir xil faza taqsimoti, |nz| <= a, davrlar 47 s / 23 s. */
-      var nzSeed = 0, selfNz = this;
-      var nz = function (a) {
-        nzSeed++;
-        var t = selfNz._simT || 0;
-        return a * (0.6 * Math.sin(2 * Math.PI * t / 47 + nzSeed * 2.399963) +
-                    0.4 * Math.sin(2 * Math.PI * t / 23 + nzSeed * 1.618034));
-      };
+       * Bir xil faza taqsimoti, |nz| <= a, davrlar 47 s / 23 s.
+       * FOYDALANUVCHI TALABI: ko'rsatkichlar referensda qoqilgandek turishi
+       * kerak — barcha nz amplitudalari 0 (displeyda miltillash yo'q).
+       * Dinamika (yuk/trip/fault javobi) to'liq saqlangan. */
+      var nz = function (a) { return 0; };
       var lag = function (k, tgt, k2) {
         T[k] = T[k] + (tgt - T[k]) * k2;
       };
@@ -345,7 +364,7 @@ window.H25 = {
       /* --- turbina yonish maqsadi: TC dinamikasi stepExhaust() da qo'llaydi --- */
       this._exhAuto = 595.0 + d * 5.5 - Math.max(0, T["IGV_POS"] - 82.6) * 0.5;
       lag("WHEEL_MAX_T", 499.9 + d * 4.0, 0.15);
-      T["GEN_A"] = T["GEN_POWER"] * 53.05 + nz(1.2);
+      T["GEN_A"] = 1516.8 + (T["GEN_POWER"] - 28.6) * 53.05;
       lag("GEN_MVAR", 4.3 + d * 0.08, 0.20);
       lag("CPR_OUT_P", 1.30 + d * 0.012, 0.20);
       lag("CPR_OUT_T", 408.6 + d * 4.5, 0.20);
@@ -448,9 +467,14 @@ window.H25 = {
         this._exhFaultOn = false;
       }
       /* exhaust overtemp: EXH_REF+22 trip (66TXT), 3 s persistence —
-       * yuk o'tish davridagi qisqa oshishlar trip bermaydi. */
+       * yuk o'tish davridagi qisqa oshishlar trip bermaydi.
+       * Qo'shimcha: faqat harorat O'SAYOTGANDA trip (unloading da exhaust
+       * tushadi — ref undan tez tushgani uchun soxta trip chiqmasligi kerak). */
       var _ref = T["EXH_REF_T"] || 595.8;
-      if ((T["EXH_T"] || 0) >= _ref + 22) {
+      var _exhNow = T["EXH_T"] || 0;
+      var _rising = (this._prevExh == null) || (_exhNow >= this._prevExh - 0.5);
+      this._prevExh = _exhNow;
+      if (_exhNow >= _ref + 22 && _rising) {
         this._exhDelay = (this._exhDelay || 0) + 1;
         if (this._exhDelay >= 6) { this._exhDelay = 0; this.trip("EXHAUST OVERTEMP TRIP", "66TXT"); }
       } else { this._exhDelay = 0; }
@@ -719,6 +743,27 @@ window.H25 = {
     T["RST_DATE"] = String(d.getFullYear()).slice(2) + "/" + p2(d.getMonth() + 1) + "/" + p2(d.getDate());
     T["RST_TIME"] = p2(d.getHours()) + ":" + p2(d.getMinutes()) + ":" + p2(d.getSeconds());
     H25.push();
+  },
+
+  /* combustor basket state: which burners are OPEN (white) vs firing (red).
+   * F1 pilot burns whenever flame is on. Each F2-x stage opens (goes white)
+   * when its GCV shuts (FOFFD below its KD staging point) or flame is out.
+   * Hamma narsa bog'liq: LOAD_SET -> FOFFD -> KD -> GCV -> basket segment. */
+  flameOn: function () {
+    if (this.tripped) return false;
+    return ["GT Firing", "Warming up", "Accelerating", "Seq. Complete",
+            "Loading", "Part Load", "Base Load", "Unloading"].indexOf(this.seq) >= 0;
+  },
+  burnerOpen: function () {
+    var T = this.tags, fl = this.flameOn();
+    var g = function (k) { return (T[k] || 0) < 5; };
+    return {
+      F1: !fl || g("F1_GCV"),
+      F21: !fl || g("F2_1_GCV"),
+      F22: !fl || g("F2_2_GCV"),
+      F23: !fl || g("F2_3_GCV"),
+      F24: !fl || g("F2_4_GCV")
+    };
   },
 
   /* start-check permissive colors */

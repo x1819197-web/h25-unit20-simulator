@@ -202,7 +202,7 @@ function renderOverlay(page, def) {
       me.className = "omotor";
       me.setAttribute("data-motor", mo.id);
       me.style.cssText = "left:" + mo.x + "px;top:" + mo.y + "px;width:" +
-        mo.d + "px;height:" + mo.d + "px;font-size:" + Math.round(mo.d * 0.55) + "px;";
+        mo.d + "px;height:" + mo.d + "px;font-size:" + Math.round(mo.d * 0.5) + "px;";
       me.textContent = "M";
       page.appendChild(me);
     }
@@ -241,8 +241,65 @@ function renderOverlay(page, def) {
     page.appendChild(pc);
     updatePolar();
   }
+  if (def.basket) {
+    page.appendChild(basketSVG(def.basket));
+  }
   refreshCustom();
   wireOverlay(page);
+}
+
+/* combustor basket (screens 1/4/8): 5 live segments, red firing / white open.
+ * def.basket = {x, y, d} page coords. Geometry scales with d. */
+function basketPie(cx, cy, r, a0, a1) {
+  var p0 = [cx + r * Math.cos(a0 * Math.PI / 180), cy + r * Math.sin(a0 * Math.PI / 180)];
+  var p1 = [cx + r * Math.cos(a1 * Math.PI / 180), cy + r * Math.sin(a1 * Math.PI / 180)];
+  return "M" + cx + "," + cy + " L" + p0[0].toFixed(1) + "," + p0[1].toFixed(1) +
+    " A" + r.toFixed(1) + "," + r.toFixed(1) + " 0 0 1 " +
+    p1[0].toFixed(1) + "," + p1[1].toFixed(1) + " Z";
+}
+function basketSVG(b) {
+  var d = b.d, c = d / 2, R = d * 0.489, rr = d * 0.213, rf = d * 0.165;
+  var s = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  s.setAttribute("width", d); s.setAttribute("height", d);
+  s.style.cssText = "position:absolute;left:" + b.x + "px;top:" + b.y + "px;";
+  var h = "";
+  var segs = [["F23", 225, 315], ["F22", 315, 405], ["F24", 45, 135], ["F21", 135, 225]];
+  for (var i = 0; i < segs.length; i++) {
+    h += '<path data-bseg="' + segs[i][0] + '" d="' + basketPie(c, c, R, segs[i][1], segs[i][2]) +
+      '" fill="rgb(254,0,0)" stroke="none"/>';
+  }
+  var dv = [[45], [135], [225], [315]], j, a, x1, y1, x2, y2;
+  for (j = 0; j < 4; j++) {
+    a = dv[j][0] * Math.PI / 180;
+    x1 = (c + rr * Math.cos(a)).toFixed(1); y1 = (c + rr * Math.sin(a)).toFixed(1);
+    x2 = (c + R * Math.cos(a)).toFixed(1); y2 = (c + R * Math.sin(a)).toFixed(1);
+    h += '<line x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 +
+      '" stroke="#333" stroke-width="' + Math.max(1.5, d * 0.02).toFixed(1) + '"/>';
+  }
+  h += '<circle cx="' + c + '" cy="' + c + '" r="' + R.toFixed(1) +
+    '" fill="none" stroke="#222" stroke-width="' + Math.max(2, d * 0.025).toFixed(1) + '"/>';
+  h += '<circle cx="' + c + '" cy="' + c + '" r="' + rr.toFixed(1) + '" fill="#fff"/>';
+  h += '<circle data-bseg="F1" cx="' + c + '" cy="' + c + '" r="' + rf.toFixed(1) + '" fill="rgb(254,0,0)"/>';
+  var fs = (d * 0.117).toFixed(1), rl = d * 0.35;
+  var labs = [["F2-3", c, c - rl], ["F2-2", c + rl, c], ["F2-4", c, c + rl], ["F2-1", c - rl, c]];
+  for (j = 0; j < 4; j++) {
+    h += '<text x="' + labs[j][1].toFixed(1) + '" y="' + labs[j][2].toFixed(1) +
+      '" text-anchor="middle" dominant-baseline="central" font-family="Arial" ' +
+      'font-weight="bold" font-size="' + fs + '" fill="#fff">' + labs[j][0] + '</text>';
+  }
+  h += '<text x="' + c + '" y="' + c + '" text-anchor="middle" dominant-baseline="central" ' +
+    'font-family="Arial" font-weight="bold" font-size="' + (d * 0.14).toFixed(1) + '" fill="#fff">F1</text>';
+  s.innerHTML = h;
+  return s;
+}
+function refreshBasket() {
+  var st = (typeof H25.burnerOpen === "function") ? H25.burnerOpen() : null;
+  if (!st) return;
+  var els = document.querySelectorAll("#page [data-bseg]");
+  for (var i = 0; i < els.length; i++) {
+    var id = els[i].getAttribute("data-bseg");
+    els[i].setAttribute("fill", st[id] ? "#ffffff" : "rgb(254,0,0)");
+  }
 }
 
 /* live exhaust polar plot (screen 11): cyan TC polygon over ref plot */
@@ -346,6 +403,7 @@ function refreshCustom() {
     var tid = tis[t].getAttribute("data-tripitem");
     tis[t].style.background = H25.tripItems[tid] ? "rgb(255,0,0)" : "rgb(0,200,0)";
   }
+  refreshBasket();
   updateMotors();
   /* gorelka staging: yopiq F2 klapan (FOFFD < KD) ekranda oqaradi.
    * Hamma narsa bog'liq: FFD -> KD -> F2_2/F2_3/F2_4 -> dumaloq gorelka. */

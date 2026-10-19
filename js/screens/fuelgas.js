@@ -5,6 +5,7 @@ window.SCR_FUELGAS = {
   title: "4 FUEL GAS",
   nav: "FUEL GAS",
   navList: ["START-UP", "FFD CONTROL", "SYNCHRO. &EXC. OPE.", "FUEL GAS", "LUBE OIL", "GENERATOR", "VENTILATION", "IBH CONTROL", "MOTORS", "MENU"],
+  basket: {x:928, y:202, d:84},
   values: [
     ["SPEED_PCT", 168, 80, 79, 12, 11, "%"],
     ["GEN_POWER", 168, 98, 79, 12, 11, "MW"],

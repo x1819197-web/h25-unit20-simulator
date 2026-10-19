@@ -2,3 +2,12 @@
 Thumbs.db
 *.log
 tmp/
+
+# PyInstaller artefactlari (katta binarlar)
+build/
+dist/
+*.exe
+
+# Python
+__pycache__/
+*.py[cod]
