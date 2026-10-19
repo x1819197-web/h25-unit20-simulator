@@ -4,6 +4,25 @@
 (function(){'use strict';
 const names={SPEED:'Turbine Speed',SPEED_PCT:'Turbine Speed',GEN_POWER:'Generator Watts',EXH_T:'Exhaust Temp.',WHEEL_MAX_T:'W.S. Max. Temp',VIB_2BX:'Max. Vibration',LUBE_HDR_T:'Lube Oil Header Temp.',GEN_KV:'Voltage',GEN_A:'Current',GEN_MVAR:'Reactive Power',GEN_PF:'Power Factor',GEN_HZ:'Frequency',GEN_MWH:'Gen. MWH',EXC_V:'Voltage',EXC_A:'Current',FOFFD:'FFD',F20RATIO:'F20RATIO',CPR_IN_T:'Cpr Inlet Temp',CPR_OUT_P:'Cpr Out Press',CPR_OUT_T:'Cpr Out Temp',AMB_T:'Amb. Temperature',IGV_POS:'IGV Position',IBH_POS:'IBH Position',ALLOW_SPREAD:'Allowable Spread',SPREAD_1:'Spread 1',SPREAD_2:'Spread 2',EXH_SPREAD_3:'Spread 3',EXH_REF_T:'Exhaust Ref. Temp.',FUEL_FLOW:'Fuel Flow',FUEL_GAS_T:'Fuel Gas Temp',FUEL_GAS_P:'Fuel Gas Press',P1_PRESS:'P1 Press',P2_PRESS:'P2 Press',FG_CT:'Fuel Gas Temp',SRV_POS:'SRV',F1_GCV:'F1 GCV',F2_1_GCV:'F2-1 GCV',F2_2_GCV:'F2-2 GCV',F2_3_GCV:'F2-3 GCV',F2_4_GCV:'F2-4 GCV',LO_HDR_P:'Lube Oil Press',LO_HDR_P2:'Lube Oil Press 2',HYD_OIL_P:'Hydraulic Press',MW_REF:'Ref.',MW_FDBK:'Fdbk',IBH_OUT_T:'IBH Outlet Temp',IBH_OUT_P:'IBH Outlet Press',IBH_IN_P:'IBH Inlet Press',SC_FILT_DP:'Self Cleaning Filter DP',HEPA_DP:'HEPA Filter DP',INLET_T1:'Inlet Temperature 1',INLET_T2:'Inlet Temperature 2',EOH_L:'Equivalent Operating Hours',EOH_R:'Equivalent Operating Hours',AOH_L:'Actual Operating Hours',AOH_R:'Actual Operating Hours',GAS_L:'Gas Firing Hours',GAS_R:'Gas Firing Hours',FS_N:'Fired Starts',ET_NT:'Emergency Trips',TOT_ST:'Total Starts',TOT_ET:'Total Trips',FS_N_R:'Fired Starts',ET_NT_R:'Emergency Trips',TOT_ST_R:'Total Starts',TOT_ET_R:'Total Trips',RST_DATE:'Reset Date',RST_TIME:'Reset Time'};
 const motorNames={eop:'Emergency Lube Oil Pump',mop1:'Main Lube Oil Pump No.1',mop2:'Main Lube Oil Pump No.2',mist1:'Lube Oil Mist Separator No.1',mist2:'Lube Oil Mist Separator No.2',hop1:'Hydraulic Supply Pump No.1',hop2:'Hydraulic Supply Pump No.2',jop:'Gen. Jacking Oil Pump',tgm:'Turning Gear Motor',ven1:'Turbine Compt Vent Fan No.1',ven2:'Turbine Compt Vent Fan No.2',bc1:'Bearing Cooling Fan No.1',bc2:'Bearing Cooling Fan No.2',evac1:'Inlet Air Filter Dust Evacuation',gfc1:'Generator Cooling Fan No.1',gfc2:'Generator Cooling Fan No.2',gfc3:'Generator Cooling Fan No.3',crank:'Cranking Motor'};
+// Every quadrant is a separate SVG fill; changing one never repaints the others.
+function drawBurner(c,x,y,r,options={}){
+ const {add,line,text}=c,small=!!options.small,id=options.id;
+ add(`<g data-burner${id?' id="'+id+'"':''}>`);
+ const sectors=[['F21',135,225],['F23',225,315],['F22',315,405],['F24',45,135]];
+ for(const [key,start,end]of sectors){const a=start*Math.PI/180,b=end*Math.PI/180;
+  add(`<path data-burner-sector="${key}" d="M${x} ${y}L${x+r*Math.cos(a)} ${y+r*Math.sin(a)}A${r} ${r} 0 0 1 ${x+r*Math.cos(b)} ${y+r*Math.sin(b)}Z" fill="#fe0000"/>`);
+ }
+ add(`<circle cx="${x}" cy="${y}" r="${r}" fill="none" stroke="#000" stroke-width="${small?1:1.5}"/>`);
+ for(const a of [45,135,225,315])line(x,y,x+r*Math.cos(a*Math.PI/180),y+r*Math.sin(a*Math.PI/180),'#000',1);
+ add(`<circle data-burner-sector="F1" cx="${x}" cy="${y}" r="17" fill="#fe0000" stroke="#fff" stroke-width="${small?2:3}"/>`);
+ const outer=small?9:10,weight=small?'normal':'bold';
+ text(x,y+4,'F1',small?11:13,'#fff','middle','bold','data-burner-label="F1"');
+ text(x,y-(small?28:29),'F2-3',outer,'#fff','middle',weight,'data-burner-label="F23"');
+ text(x,y+33,'F2-4',outer,'#fff','middle',weight,'data-burner-label="F24"');
+ text(x-(small?32:34),y+4,'F2-1',outer,'#fff','middle',weight,'data-burner-label="F21"');
+ text(x+(small?32:33),y+4,'F2-2',outer,'#fff','middle',weight,'data-burner-label="F22"');
+ add('</g>');
+}
 function draw(c,id){
 const{add,rect,path,line,text,bevel,panel,field,valve,arrow,breaker,motor,button,controlBox,metadata:s,screens,P,escape}=c;
 const shared=['ffd','brg','vib','ws','os'].includes(id);
@@ -32,7 +51,7 @@ if(id==='fuelgas'){
  valve(449,415);text(449,387,'SRV',10,'#111','middle');pipe('M586 415V62Q577 43 566 61');valve(586,210,'#168d1b',1,true);text(555,65,'VENT GAS',10,'#eee','end');text(574,198,'Fuel Gas Vent Valve',9,'#111','end');
  text(96,415,'Fuel',10,'#fff','end','bold');text(96,427,'Gas',10,'#fff','end','bold');
  for(const i of [10,11,14,15,16,17,18,19,20,21,22,23]){const v=s.values[i];rect(v[1]-29,v[2]+P-1,v[3]+32,v[4]+2,'#4682b4','#333');text(v[1]-5,v[2]+P+10,i%2?'Fdbk':'Ref.',9,'#fff','end');}
- const b=s.basket,x=b.x+b.d/2,y=b.y+P+b.d/2;add(`<g data-burner><circle cx="${x}" cy="${y}" r="${b.d/2}" fill="#fe0000" stroke="#000"/>`);for(const a of [45,135,225,315])line(x,y,x+b.d/2*Math.cos(a*Math.PI/180),y+b.d/2*Math.sin(a*Math.PI/180),'#000');circle(x,y,17,'#fe0000','#fff',2);text(x,y+4,'F1',11,'#fff','middle','bold');text(x,y-28,'F2-3',9,'#fff','middle');text(x,y+33,'F2-4',9,'#fff','middle');text(x-32,y+4,'F2-1',9,'#fff','middle');text(x+32,y+4,'F2-2',9,'#fff','middle');add('</g>');
+ const b=s.basket;drawBurner(c,b.x+b.d/2,b.y+P+b.d/2,b.d/2,{small:true});
 }
 if(id==='sync'){
  boxFields(s.values.slice(0,7),89,31,239,171,'Generator Info.');boxFields(s.values.slice(7,9),89,207,239,68,'Exciter Info.');boxFields(s.values.slice(9,15),89,281,239,153,'Turbine Info.');boxFields(s.values.slice(15),89,434,239,116,'Combustor Info.');
@@ -122,7 +141,9 @@ function update(svg,id,H){
  svg.querySelectorAll('[data-trip-item]').forEach(el=>el.setAttribute('fill',H.tripItems[el.dataset.tripItem]?'#fe0000':'#c0c0c0'));
  svg.querySelectorAll('[data-ready]').forEach(el=>el.setAttribute('fill',(el.dataset.ready==='start'?H.startCheckOk():H.syncReady())?'#00ff00':'#c0c0c0'));
  svg.querySelectorAll('[data-lamp]').forEach(el=>{const on=el.dataset.lamp==='ibhlock'?H.ctl.ibhLock:el.dataset.lamp==='sync1'?H.running()||H.seq==='Seq. Complete':el.dataset.lamp==='sync2'?H.ctl.field41:Math.abs(H.tags.GEN_KV-10.92)<.5;el.setAttribute('fill',on?'#00ff00':'#fe0000');});
- svg.querySelectorAll('[data-burner] circle').forEach(el=>el.setAttribute('fill',H.flameOn()?'#fe0000':'#fff'));svg.querySelectorAll('[data-burner] text').forEach(el=>el.setAttribute('fill',H.flameOn()?'#fff':'#111'));
+ const open=H.burnerOpen();
+ svg.querySelectorAll('[data-burner-sector]').forEach(el=>{const off=open[el.dataset.burnerSector];el.setAttribute('fill',off?'#fff':'#fe0000');el.setAttribute('data-active',String(!off));if(el.dataset.burnerSector==='F1')el.setAttribute('stroke',off?'#000':'#fff');});
+ svg.querySelectorAll('[data-burner-label]').forEach(el=>el.setAttribute('fill',open[el.dataset.burnerLabel]?'#000':'#fff'));
 }
-window.H25_EXACT_VIEWS={draw,update};
+window.H25_EXACT_VIEWS={draw,update,drawBurner};
 })();

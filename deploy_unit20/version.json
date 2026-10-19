@@ -1,6 +1,8 @@
 {
-  "version": "3.0.0",
-  "renderer": "native-svg-html",
-  "sources": "repository root",
+  "version": "3.1.0",
+  "renderer": "native-original-layout-svg",
+  "layout": "fill-viewport",
+  "f24": "white when FFD < live KD4H; independent SVG sector",
+  "sources": "exact-startup/ + js/engine.js",
   "model": "educational, not OEM certified"
 }

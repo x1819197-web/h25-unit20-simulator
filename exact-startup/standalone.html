@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>H25 UNIT-20 — START-UP / original layout</title>
-<style>*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#000;font-family:Arial,Helvetica,sans-serif}body{display:flex;flex-direction:column}#screen-holder{flex:1;min-height:0;display:flex;justify-content:center;align-items:flex-start;overflow:hidden}#hmi{display:block;flex:none;width:1280px;height:574px;user-select:none;touch-action:manipulation;background:#a0a0a0}#hmi text{font-family:Arial,Helvetica,sans-serif}#hmi .operator{cursor:pointer;outline:none}#hmi .operator:focus-visible>.focus-ring{stroke:#ffdf40;stroke-width:2;fill:none}#hmi .operator:active .button-face{fill:#b4b4b4}#hmi .operator[data-selected=true] .button-face{fill:#ffa500}#hmi .operator[data-readonly=true]{cursor:default}#hmi .data-value{font-weight:bold;fill:#000;dominant-baseline:central;text-anchor:middle}#hmi .static-label{fill:#e6e6e6}#tools{height:22px;flex:none;display:flex;align-items:center;gap:5px;background:#000;color:#d4d4d4;padding:0 7px;font-size:10px;white-space:nowrap}#tools #message{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis}#tools button{height:20px;min-width:30px;background:#000035;color:#ffd31f;border:1px solid #dda600;border-radius:3px;font:10px Arial;padding:0 7px;cursor:pointer}#tools button:last-child{background:#002706;border-color:#008100;font-size:15px}dialog{background:#c0c0c0;border:2px outset #fff;box-shadow:3px 3px #555;color:#111;max-width:95vw;padding:18px}dialog::backdrop{background:#0006}dialog h2{font-size:16px;background:#000080;color:white;margin:-14px -14px 20px;padding:5px}dialog input{width:90px;font:16px Arial}dialog button{font:12px Arial;padding:6px 16px;background:#c0c0c0;border:2px outset #fff;cursor:pointer}@media(max-width:700px){#message{display:none}#tools{justify-content:flex-end}}
+<style>*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#a0a0a0;font-family:Arial,Helvetica,sans-serif}body{display:flex;flex-direction:column}#screen-holder{flex:1;min-height:0;display:flex;justify-content:center;align-items:flex-start;overflow:hidden}#hmi{display:block;flex:none;width:1280px;height:574px;user-select:none;touch-action:manipulation;background:#a0a0a0}#hmi text{font-family:Arial,Helvetica,sans-serif}#hmi .operator{cursor:pointer;outline:none}#hmi .operator:focus-visible>.focus-ring{stroke:#ffdf40;stroke-width:2;fill:none}#hmi .operator:active .button-face{fill:#b4b4b4}#hmi .operator[data-selected=true] .button-face{fill:#ffa500}#hmi .operator[data-readonly=true]{cursor:default}#hmi .data-value{font-weight:bold;fill:#000;dominant-baseline:central;text-anchor:middle}#hmi .static-label{fill:#e6e6e6}#tools{height:22px;flex:none;display:flex;align-items:center;gap:5px;background:#a0a0a0;color:#111;padding:0 7px;font-size:10px;white-space:nowrap}#tools #message{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis}#tools button{height:20px;min-width:30px;background:#c0c0c0;color:#000080;border:1px outset #fff;border-radius:0;font:10px Arial;padding:0 7px;cursor:pointer}#tools button:last-child{background:#c0c0c0;border-color:#777;font-size:15px}dialog{background:#c0c0c0;border:2px outset #fff;box-shadow:3px 3px #555;color:#111;max-width:95vw;padding:18px}dialog::backdrop{background:#0006}dialog h2{font-size:16px;background:#000080;color:white;margin:-14px -14px 20px;padding:5px}dialog input{width:90px;font:16px Arial}dialog button{font:12px Arial;padding:6px 16px;background:#c0c0c0;border:2px outset #fff;cursor:pointer}@media(max-width:700px){#message{display:none}#tools{justify-content:flex-end}}
 /* Preview instrumentation stays outside the original HMI and is hidden in the acceptance frame. */
 #live-button{display:none}#tools #message{opacity:0}
 #command-feedback{position:fixed;z-index:9;bottom:25px;left:50%;transform:translateX(-50%);width:max-content;max-width:92vw;padding:7px 12px;border:1px solid #222;box-shadow:1px 1px #555;background:#ffffcd;color:#111;font:12px Arial;white-space:normal;pointer-events:none}#command-feedback[data-error=true]{background:#ffe0d5;color:#900}#command-feedback[hidden]{display:none}#cal-dialog{max-width:440px}#cal-input{width:220px;max-width:60vw}#cal-output{display:inline-block;min-width:60px;margin-left:8px}
@@ -11,7 +11,7 @@
 </head>
 <body>
 <main id="screen-holder" aria-label="H25 UNIT-20 START-UP">
-<svg id="hmi" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 574" role="group" aria-label="H25 Gas Turbine Generator UNIT-20 START-UP, native vector recreation"></svg>
+<svg id="hmi" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 574" preserveAspectRatio="none" role="group" aria-label="H25 Gas Turbine Generator UNIT-20 START-UP, native vector recreation"></svg>
 </main>
 <footer id="tools"><span id="message" role="status">START-UP · векторная перерисовка исходной компоновки · эталонные показания</span><button id="live-button" title="Включить или приостановить учебную модель">▶ СИМУЛЯЦИЯ</button><button id="full-button">⛶ TO‘LIQ EKRAN</button><button id="sound-button" aria-pressed="false" title="Звук аварии">🔇</button></footer>
 <dialog id="load-dialog"><form id="load-form"><h2>Load Set Value</h2><label>Load setpoint <input id="load-input" type="number" min="0" max="32" step="0.1" required> MW</label><p><button type="button" id="load-apply">ENTER</button><button type="button" id="load-cancel">CANCEL</button></p></form></dialog>
@@ -993,7 +993,8 @@ window.H25_TAGS = {
       );
       ['F1_GCV', 'F2_1_GCV', 'F2_2_GCV', 'F2_3_GCV', 'F2_4_GCV'].forEach(
         function (k, i) {
-          var threshold = [0, 0, 36.3, 44.8, 50.8][i];
+          // F2-4 switching follows the live KD4H setting, not a duplicated constant.
+          var threshold = i === 4 ? T.KD4H : [0, 0, 36.3, 44.8][i];
           lag(
             k,
             fl && fuel >= threshold
@@ -1397,7 +1398,14 @@ window.H25_TAGS = {
         keys = ['F1', 'F21', 'F22', 'F23', 'F24'],
         tags = ['F1_GCV', 'F2_1_GCV', 'F2_2_GCV', 'F2_3_GCV', 'F2_4_GCV'];
       keys.forEach(function (k, i) {
-        r[k] = !this.flameOn() || this.tags[tags[i]] < 5;
+        // Operator-confirmed indication: below KD4H ONLY F2-4 turns white.
+        // No KC4L hysteresis or delay is applied to this indication. Actual GCV
+        // position remains a lagged feedback signal and may still be closing.
+        if (k === 'F24') {
+          var ffd = this.tags.FOFFD, kd4h = this.tags.KD4H;
+          r[k] = !this.flameOn() || !Number.isFinite(ffd) ||
+            !Number.isFinite(kd4h) || ffd < kd4h;
+        } else r[k] = !this.flameOn() || this.tags[tags[i]] < 5;
       }, this);
       return r;
     },
@@ -1441,6 +1449,159 @@ window.H25_TAGS = {
       }, 100);
     },
   };
+})();
+
+;
+/* Versioned, session-scoped telemetry. Transport never writes calculated tags. */
+(function () {
+  'use strict';
+  var q = new URLSearchParams(location.search),
+    enabled = q.get('link') !== '0',
+    session = q.get('session') || 'unit20-default';
+  var key = 'unit20:v3:' + session,
+    bc = null,
+    lastStorage = 0,
+    latest = null,
+    peers = {},
+    instance =
+      typeof crypto !== 'undefined' && crypto.randomUUID
+        ? crypto.randomUUID()
+        : String(Date.now());
+  var role = window.UNIT20_ROLE || 'h25',
+    TTL = 6000;
+  if (enabled)
+    try {
+      bc = new BroadcastChannel(key);
+    } catch (e) {}
+  function accept(m) {
+    if (
+      !m ||
+      m.version !== 3 ||
+      m.session !== session ||
+      m.instance === instance ||
+      !['h25', 'ku20'].includes(m.src) ||
+      !Number.isFinite(m.t) ||
+      Math.abs(Date.now() - m.t) > TTL
+    )
+      return;
+    peers[m.instance] = { src: m.src, t: m.t };
+    if (m.src !== role) {
+      if (
+        role === 'h25' &&
+        (typeof m.boilerTrip !== 'boolean' || !Number.isFinite(m.backP))
+      )
+        return;
+      if (
+        role === 'ku20' &&
+        (!Number.isFinite(m.exh_t) ||
+          !Number.isFinite(m.power) ||
+          typeof m.running !== 'boolean')
+      )
+        return;
+      latest = m;
+    }
+  }
+  if (bc)
+    bc.onmessage = function (e) {
+      accept(e.data);
+    };
+  function receive() {
+    if (!enabled) return;
+    try {
+      var raw = localStorage.getItem(
+        key + ':' + (role === 'h25' ? 'ku20' : 'h25'),
+      );
+      if (raw) accept(JSON.parse(raw));
+    } catch (e) {}
+  }
+  function conflicts() {
+    var now = Date.now(),
+      count = 0;
+    Object.keys(peers).forEach(function (id) {
+      if (now - peers[id].t > TTL) delete peers[id];
+      else if (peers[id].src === role) count++;
+    });
+    return count > 0;
+  }
+  function current() {
+    receive();
+    return enabled &&
+      !conflicts() &&
+      latest &&
+      Date.now() - latest.t < TTL &&
+      !latest.paused
+      ? latest
+      : null;
+  }
+  function send(data) {
+    if (!enabled) return;
+    var msg = Object.assign({}, data, {
+      src: role,
+      version: 3,
+      session: session,
+      instance: instance,
+      t: Date.now(),
+    });
+    if (bc) bc.postMessage(msg);
+    if (Date.now() - lastStorage > 1000) {
+      try {
+        localStorage.setItem(key + ':' + role, JSON.stringify(msg));
+      } catch (e) {}
+      lastStorage = Date.now();
+    }
+  }
+  window.UNIT20_LINK = {
+    read: current,
+    send: send,
+    status: function () {
+      if (!enabled) return 'LINK DISABLED';
+      if (conflicts())
+        return 'SESSION CONFLICT · close duplicate ' + role + ' window';
+      receive();
+      return latest && Date.now() - latest.t < TTL
+        ? latest.paused
+          ? 'PEER PAUSED'
+          : 'LINK LIVE · ' + (role === 'h25' ? 'KU-20' : 'H25')
+        : 'LINK OFFLINE · standalone';
+    },
+    session: session,
+  };
+  if (role === 'h25' && window.H25) {
+    H25.onTick(function (T) {
+      var ku = current();
+      H25.kuInput = ku
+        ? {
+            boilerTrip: ku.boilerTrip,
+            backP: Math.max(-20, Math.min(20, ku.backP)),
+          }
+        : null;
+      window.KU_LIVE = ku;
+      send({
+        exh_t: T.EXH_T,
+        power: T.GEN_POWER,
+        speed: T.SPEED,
+        load_set: T.LOAD_SET,
+        fuel_flow: T.FUEL_FLOW,
+        running: H25.flameOn(),
+        tripped: H25.tripped,
+        seq: H25.seq,
+        paused: H25.paused || document.hidden,
+      });
+    });
+    setInterval(function () {
+      if (!H25.tags.SPEED && H25.tags.SPEED !== 0) return;
+      send({
+        exh_t: H25.tags.EXH_T,
+        power: H25.tags.GEN_POWER,
+        speed: H25.tags.SPEED,
+        running: H25.flameOn(),
+        tripped: H25.tripped,
+        paused: H25.paused || document.hidden,
+      });
+      var ku = current();
+      H25.kuInput = ku ? { boilerTrip: ku.boilerTrip, backP: ku.backP } : null;
+    }, 1500);
+  }
 })();
 
 </script><script>
@@ -2800,6 +2961,25 @@ window.SCR_WS = {
 (function(){'use strict';
 const names={SPEED:'Turbine Speed',SPEED_PCT:'Turbine Speed',GEN_POWER:'Generator Watts',EXH_T:'Exhaust Temp.',WHEEL_MAX_T:'W.S. Max. Temp',VIB_2BX:'Max. Vibration',LUBE_HDR_T:'Lube Oil Header Temp.',GEN_KV:'Voltage',GEN_A:'Current',GEN_MVAR:'Reactive Power',GEN_PF:'Power Factor',GEN_HZ:'Frequency',GEN_MWH:'Gen. MWH',EXC_V:'Voltage',EXC_A:'Current',FOFFD:'FFD',F20RATIO:'F20RATIO',CPR_IN_T:'Cpr Inlet Temp',CPR_OUT_P:'Cpr Out Press',CPR_OUT_T:'Cpr Out Temp',AMB_T:'Amb. Temperature',IGV_POS:'IGV Position',IBH_POS:'IBH Position',ALLOW_SPREAD:'Allowable Spread',SPREAD_1:'Spread 1',SPREAD_2:'Spread 2',EXH_SPREAD_3:'Spread 3',EXH_REF_T:'Exhaust Ref. Temp.',FUEL_FLOW:'Fuel Flow',FUEL_GAS_T:'Fuel Gas Temp',FUEL_GAS_P:'Fuel Gas Press',P1_PRESS:'P1 Press',P2_PRESS:'P2 Press',FG_CT:'Fuel Gas Temp',SRV_POS:'SRV',F1_GCV:'F1 GCV',F2_1_GCV:'F2-1 GCV',F2_2_GCV:'F2-2 GCV',F2_3_GCV:'F2-3 GCV',F2_4_GCV:'F2-4 GCV',LO_HDR_P:'Lube Oil Press',LO_HDR_P2:'Lube Oil Press 2',HYD_OIL_P:'Hydraulic Press',MW_REF:'Ref.',MW_FDBK:'Fdbk',IBH_OUT_T:'IBH Outlet Temp',IBH_OUT_P:'IBH Outlet Press',IBH_IN_P:'IBH Inlet Press',SC_FILT_DP:'Self Cleaning Filter DP',HEPA_DP:'HEPA Filter DP',INLET_T1:'Inlet Temperature 1',INLET_T2:'Inlet Temperature 2',EOH_L:'Equivalent Operating Hours',EOH_R:'Equivalent Operating Hours',AOH_L:'Actual Operating Hours',AOH_R:'Actual Operating Hours',GAS_L:'Gas Firing Hours',GAS_R:'Gas Firing Hours',FS_N:'Fired Starts',ET_NT:'Emergency Trips',TOT_ST:'Total Starts',TOT_ET:'Total Trips',FS_N_R:'Fired Starts',ET_NT_R:'Emergency Trips',TOT_ST_R:'Total Starts',TOT_ET_R:'Total Trips',RST_DATE:'Reset Date',RST_TIME:'Reset Time'};
 const motorNames={eop:'Emergency Lube Oil Pump',mop1:'Main Lube Oil Pump No.1',mop2:'Main Lube Oil Pump No.2',mist1:'Lube Oil Mist Separator No.1',mist2:'Lube Oil Mist Separator No.2',hop1:'Hydraulic Supply Pump No.1',hop2:'Hydraulic Supply Pump No.2',jop:'Gen. Jacking Oil Pump',tgm:'Turning Gear Motor',ven1:'Turbine Compt Vent Fan No.1',ven2:'Turbine Compt Vent Fan No.2',bc1:'Bearing Cooling Fan No.1',bc2:'Bearing Cooling Fan No.2',evac1:'Inlet Air Filter Dust Evacuation',gfc1:'Generator Cooling Fan No.1',gfc2:'Generator Cooling Fan No.2',gfc3:'Generator Cooling Fan No.3',crank:'Cranking Motor'};
+// Every quadrant is a separate SVG fill; changing one never repaints the others.
+function drawBurner(c,x,y,r,options={}){
+ const {add,line,text}=c,small=!!options.small,id=options.id;
+ add(`<g data-burner${id?' id="'+id+'"':''}>`);
+ const sectors=[['F21',135,225],['F23',225,315],['F22',315,405],['F24',45,135]];
+ for(const [key,start,end]of sectors){const a=start*Math.PI/180,b=end*Math.PI/180;
+  add(`<path data-burner-sector="${key}" d="M${x} ${y}L${x+r*Math.cos(a)} ${y+r*Math.sin(a)}A${r} ${r} 0 0 1 ${x+r*Math.cos(b)} ${y+r*Math.sin(b)}Z" fill="#fe0000"/>`);
+ }
+ add(`<circle cx="${x}" cy="${y}" r="${r}" fill="none" stroke="#000" stroke-width="${small?1:1.5}"/>`);
+ for(const a of [45,135,225,315])line(x,y,x+r*Math.cos(a*Math.PI/180),y+r*Math.sin(a*Math.PI/180),'#000',1);
+ add(`<circle data-burner-sector="F1" cx="${x}" cy="${y}" r="17" fill="#fe0000" stroke="#fff" stroke-width="${small?2:3}"/>`);
+ const outer=small?9:10,weight=small?'normal':'bold';
+ text(x,y+4,'F1',small?11:13,'#fff','middle','bold','data-burner-label="F1"');
+ text(x,y-(small?28:29),'F2-3',outer,'#fff','middle',weight,'data-burner-label="F23"');
+ text(x,y+33,'F2-4',outer,'#fff','middle',weight,'data-burner-label="F24"');
+ text(x-(small?32:34),y+4,'F2-1',outer,'#fff','middle',weight,'data-burner-label="F21"');
+ text(x+(small?32:33),y+4,'F2-2',outer,'#fff','middle',weight,'data-burner-label="F22"');
+ add('</g>');
+}
 function draw(c,id){
 const{add,rect,path,line,text,bevel,panel,field,valve,arrow,breaker,motor,button,controlBox,metadata:s,screens,P,escape}=c;
 const shared=['ffd','brg','vib','ws','os'].includes(id);
@@ -2828,7 +3008,7 @@ if(id==='fuelgas'){
  valve(449,415);text(449,387,'SRV',10,'#111','middle');pipe('M586 415V62Q577 43 566 61');valve(586,210,'#168d1b',1,true);text(555,65,'VENT GAS',10,'#eee','end');text(574,198,'Fuel Gas Vent Valve',9,'#111','end');
  text(96,415,'Fuel',10,'#fff','end','bold');text(96,427,'Gas',10,'#fff','end','bold');
  for(const i of [10,11,14,15,16,17,18,19,20,21,22,23]){const v=s.values[i];rect(v[1]-29,v[2]+P-1,v[3]+32,v[4]+2,'#4682b4','#333');text(v[1]-5,v[2]+P+10,i%2?'Fdbk':'Ref.',9,'#fff','end');}
- const b=s.basket,x=b.x+b.d/2,y=b.y+P+b.d/2;add(`<g data-burner><circle cx="${x}" cy="${y}" r="${b.d/2}" fill="#fe0000" stroke="#000"/>`);for(const a of [45,135,225,315])line(x,y,x+b.d/2*Math.cos(a*Math.PI/180),y+b.d/2*Math.sin(a*Math.PI/180),'#000');circle(x,y,17,'#fe0000','#fff',2);text(x,y+4,'F1',11,'#fff','middle','bold');text(x,y-28,'F2-3',9,'#fff','middle');text(x,y+33,'F2-4',9,'#fff','middle');text(x-32,y+4,'F2-1',9,'#fff','middle');text(x+32,y+4,'F2-2',9,'#fff','middle');add('</g>');
+ const b=s.basket;drawBurner(c,b.x+b.d/2,b.y+P+b.d/2,b.d/2,{small:true});
 }
 if(id==='sync'){
  boxFields(s.values.slice(0,7),89,31,239,171,'Generator Info.');boxFields(s.values.slice(7,9),89,207,239,68,'Exciter Info.');boxFields(s.values.slice(9,15),89,281,239,153,'Turbine Info.');boxFields(s.values.slice(15),89,434,239,116,'Combustor Info.');
@@ -2918,9 +3098,11 @@ function update(svg,id,H){
  svg.querySelectorAll('[data-trip-item]').forEach(el=>el.setAttribute('fill',H.tripItems[el.dataset.tripItem]?'#fe0000':'#c0c0c0'));
  svg.querySelectorAll('[data-ready]').forEach(el=>el.setAttribute('fill',(el.dataset.ready==='start'?H.startCheckOk():H.syncReady())?'#00ff00':'#c0c0c0'));
  svg.querySelectorAll('[data-lamp]').forEach(el=>{const on=el.dataset.lamp==='ibhlock'?H.ctl.ibhLock:el.dataset.lamp==='sync1'?H.running()||H.seq==='Seq. Complete':el.dataset.lamp==='sync2'?H.ctl.field41:Math.abs(H.tags.GEN_KV-10.92)<.5;el.setAttribute('fill',on?'#00ff00':'#fe0000');});
- svg.querySelectorAll('[data-burner] circle').forEach(el=>el.setAttribute('fill',H.flameOn()?'#fe0000':'#fff'));svg.querySelectorAll('[data-burner] text').forEach(el=>el.setAttribute('fill',H.flameOn()?'#fff':'#111'));
+ const open=H.burnerOpen();
+ svg.querySelectorAll('[data-burner-sector]').forEach(el=>{const off=open[el.dataset.burnerSector];el.setAttribute('fill',off?'#fff':'#fe0000');el.setAttribute('data-active',String(!off));if(el.dataset.burnerSector==='F1')el.setAttribute('stroke',off?'#000':'#fff');});
+ svg.querySelectorAll('[data-burner-label]').forEach(el=>el.setAttribute('fill',open[el.dataset.burnerLabel]?'#000':'#fff'));
 }
-window.H25_EXACT_VIEWS={draw,update};
+window.H25_EXACT_VIEWS={draw,update,drawBurner};
 })();
 
 </script><script>
@@ -2972,10 +3154,7 @@ valve(155,122);text(155,138,'SRV',8,'#eee','middle');
 valve(246,83,'#208f10',1,true);rect(232,76,9,13,'#28991c');text(236.5,85,'S',7,'#146200','middle');text(179,74,'Gas Vent Vlv',8,'#eee');
 // Combustor basket is constructed from four arc sectors and a central pilot.
 const cx=468.5,cy=79.5,r=47.5;
-add(`<g id="basket">`);add(`<circle cx="${cx}" cy="${cy}" r="${r}" fill="#fe0000" stroke="#000" stroke-width="1.5"/>`);
-for(const a of [45,135,225,315]){const rad=a*Math.PI/180;line(cx,cy,cx+r*Math.cos(rad),cy+r*Math.sin(rad),'#000',1);}
-add(`<circle cx="${cx}" cy="${cy}" r="17" fill="#fe0000" stroke="#fff" stroke-width="3"/>`);
-text(cx,cy+4,'F1',13,'#fff','middle','bold');text(cx,cy-29,'F2-3',10,'#fff','middle','bold');text(cx,cy+33,'F2-4',10,'#fff','middle','bold');text(cx-34,cy+4,'F2-1',10,'#fff','middle','bold');text(cx+33,cy+4,'F2-2',10,'#fff','middle','bold');add('</g>');
+window.H25_EXACT_VIEWS.drawBurner({add,line,text},cx,cy,r,{id:'basket'});
 // Allowable spread and generator/turbine vibration instrument panels.
 for(const [y,title]of [[32,'Allow Spread'],[66,'Spread #1'],[100,'Spread #2']]){bevel(535,y,72,16,'#4682b4','#646464','#d3d3d3');text(571,y+11,title,8,'#eee','middle');}
 panel(720,31,218,49,'Gas Turbine Vibration');panel(720,83,218,49,'Generator Vibration');
@@ -3046,13 +3225,13 @@ H25.init();for(const k in H25_TAGS){H25.tags[k]=typeof H25_TAGS[k]==='object'?H2
 let live=false,modelStarted=false,sound=false,audio=null,lastAlarm=0;
 let noticeUntil=0,noticeTimer;
 const msg=(s,error=false)=>{noticeUntil=performance.now()+6000;const el=document.getElementById('message');el.textContent=s;el.style.opacity='1';const box=document.getElementById('command-feedback');box.textContent=s;box.hidden=false;box.dataset.error=String(error);clearTimeout(noticeTimer);noticeTimer=setTimeout(()=>{box.hidden=true;},6000);};
-function fit(){const holder=document.getElementById('screen-holder');const scale=Math.min(holder.clientWidth/1280,holder.clientHeight/574);svg.style.width=1280*scale+'px';svg.style.height=574*scale+'px';}
+function fit(){const holder=document.getElementById('screen-holder');svg.style.width=holder.clientWidth+'px';svg.style.height=holder.clientHeight+'px';}
 function format(k,u){const v=H25.tags[k],d=H25_TAGS[k];if(typeof v==='string')return v;if(k==='NA_TAG'||v==null)return '—';if(!Number.isFinite(v))return 'BAD';let val=v.toFixed(d?.dp??1);return val+(u?' '+u:'');}
 function refresh(){
  svg.querySelectorAll('[data-tag]').forEach(el=>{el.textContent=format(el.dataset.tag,el.dataset.unit);});
  svg.querySelectorAll('[data-grp]').forEach(el=>{const g=el.dataset.grp;const val=g==='gtStatus'?H25.seq:g==='ffdStatus'?H25.ctl.ffdStatus:g==='fieldClose'?(H25.ctl.field41?'CLOSED':'OPEN'):H25.ctl[g];const selected=val===el.dataset.val&&!['master'].includes(g);el.dataset.selected=String(selected);const r=el.querySelector('.button-face');if(r)r.setAttribute('fill',selected?'#ffa500':'#c0c0c0');});
  svg.querySelectorAll('[data-breaker]').forEach(el=>{const id=el.dataset.breaker;const closed=id==='52G'?H25.ctl.brk52G:id==='41'?H25.ctl.field41:true;el.setAttribute('fill',closed?'#fe0000':'#00be00');});
- if(live){const fire=H25.flameOn();svg.querySelectorAll('#basket>circle').forEach(c=>{c.setAttribute('fill',fire?'#fe0000':'#fff');c.setAttribute('stroke',fire?'#fff':'#000');});svg.querySelectorAll('#basket text').forEach(t=>t.setAttribute('fill',fire?'#fff':'#000'));svg.querySelector('#flame-symbols')?.setAttribute('visibility',fire?'visible':'hidden');if(performance.now()>noticeUntil)document.getElementById('message').textContent=((H25.tripped?'TRIP: '+H25.tripCause:H25.seq)+' · '+H25._simT.toFixed(1)+' s · учебная динамика');}
+ if(live){const fire=H25.flameOn();svg.querySelector('#flame-symbols')?.setAttribute('visibility',fire?'visible':'hidden');if(performance.now()>noticeUntil)document.getElementById('message').textContent=((H25.tripped?'TRIP: '+H25.tripCause:H25.seq)+' · '+H25._simT.toFixed(1)+' s · учебная динамика');}
  window.H25_EXACT_VIEWS?.update(svg,current,H25);
  if(sound&&audio&&H25.tripped&&performance.now()-lastAlarm>600){lastAlarm=performance.now();const osc=audio.createOscillator(),g=audio.createGain();osc.frequency.value=800;g.gain.setValueAtTime(.05,audio.currentTime);g.gain.exponentialRampToValueAtTime(.001,audio.currentTime+.25);osc.connect(g);g.connect(audio.destination);osc.start();osc.stop(audio.currentTime+.26);}
 }

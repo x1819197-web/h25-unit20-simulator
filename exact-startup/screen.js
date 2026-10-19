@@ -46,10 +46,7 @@ valve(155,122);text(155,138,'SRV',8,'#eee','middle');
 valve(246,83,'#208f10',1,true);rect(232,76,9,13,'#28991c');text(236.5,85,'S',7,'#146200','middle');text(179,74,'Gas Vent Vlv',8,'#eee');
 // Combustor basket is constructed from four arc sectors and a central pilot.
 const cx=468.5,cy=79.5,r=47.5;
-add(`<g id="basket">`);add(`<circle cx="${cx}" cy="${cy}" r="${r}" fill="#fe0000" stroke="#000" stroke-width="1.5"/>`);
-for(const a of [45,135,225,315]){const rad=a*Math.PI/180;line(cx,cy,cx+r*Math.cos(rad),cy+r*Math.sin(rad),'#000',1);}
-add(`<circle cx="${cx}" cy="${cy}" r="17" fill="#fe0000" stroke="#fff" stroke-width="3"/>`);
-text(cx,cy+4,'F1',13,'#fff','middle','bold');text(cx,cy-29,'F2-3',10,'#fff','middle','bold');text(cx,cy+33,'F2-4',10,'#fff','middle','bold');text(cx-34,cy+4,'F2-1',10,'#fff','middle','bold');text(cx+33,cy+4,'F2-2',10,'#fff','middle','bold');add('</g>');
+window.H25_EXACT_VIEWS.drawBurner({add,line,text},cx,cy,r,{id:'basket'});
 // Allowable spread and generator/turbine vibration instrument panels.
 for(const [y,title]of [[32,'Allow Spread'],[66,'Spread #1'],[100,'Spread #2']]){bevel(535,y,72,16,'#4682b4','#646464','#d3d3d3');text(571,y+11,title,8,'#eee','middle');}
 panel(720,31,218,49,'Gas Turbine Vibration');panel(720,83,218,49,'Generator Vibration');
@@ -120,13 +117,13 @@ H25.init();for(const k in H25_TAGS){H25.tags[k]=typeof H25_TAGS[k]==='object'?H2
 let live=false,modelStarted=false,sound=false,audio=null,lastAlarm=0;
 let noticeUntil=0,noticeTimer;
 const msg=(s,error=false)=>{noticeUntil=performance.now()+6000;const el=document.getElementById('message');el.textContent=s;el.style.opacity='1';const box=document.getElementById('command-feedback');box.textContent=s;box.hidden=false;box.dataset.error=String(error);clearTimeout(noticeTimer);noticeTimer=setTimeout(()=>{box.hidden=true;},6000);};
-function fit(){const holder=document.getElementById('screen-holder');const scale=Math.min(holder.clientWidth/1280,holder.clientHeight/574);svg.style.width=1280*scale+'px';svg.style.height=574*scale+'px';}
+function fit(){const holder=document.getElementById('screen-holder');svg.style.width=holder.clientWidth+'px';svg.style.height=holder.clientHeight+'px';}
 function format(k,u){const v=H25.tags[k],d=H25_TAGS[k];if(typeof v==='string')return v;if(k==='NA_TAG'||v==null)return '—';if(!Number.isFinite(v))return 'BAD';let val=v.toFixed(d?.dp??1);return val+(u?' '+u:'');}
 function refresh(){
  svg.querySelectorAll('[data-tag]').forEach(el=>{el.textContent=format(el.dataset.tag,el.dataset.unit);});
  svg.querySelectorAll('[data-grp]').forEach(el=>{const g=el.dataset.grp;const val=g==='gtStatus'?H25.seq:g==='ffdStatus'?H25.ctl.ffdStatus:g==='fieldClose'?(H25.ctl.field41?'CLOSED':'OPEN'):H25.ctl[g];const selected=val===el.dataset.val&&!['master'].includes(g);el.dataset.selected=String(selected);const r=el.querySelector('.button-face');if(r)r.setAttribute('fill',selected?'#ffa500':'#c0c0c0');});
  svg.querySelectorAll('[data-breaker]').forEach(el=>{const id=el.dataset.breaker;const closed=id==='52G'?H25.ctl.brk52G:id==='41'?H25.ctl.field41:true;el.setAttribute('fill',closed?'#fe0000':'#00be00');});
- if(live){const fire=H25.flameOn();svg.querySelectorAll('#basket>circle').forEach(c=>{c.setAttribute('fill',fire?'#fe0000':'#fff');c.setAttribute('stroke',fire?'#fff':'#000');});svg.querySelectorAll('#basket text').forEach(t=>t.setAttribute('fill',fire?'#fff':'#000'));svg.querySelector('#flame-symbols')?.setAttribute('visibility',fire?'visible':'hidden');if(performance.now()>noticeUntil)document.getElementById('message').textContent=((H25.tripped?'TRIP: '+H25.tripCause:H25.seq)+' · '+H25._simT.toFixed(1)+' s · учебная динамика');}
+ if(live){const fire=H25.flameOn();svg.querySelector('#flame-symbols')?.setAttribute('visibility',fire?'visible':'hidden');if(performance.now()>noticeUntil)document.getElementById('message').textContent=((H25.tripped?'TRIP: '+H25.tripCause:H25.seq)+' · '+H25._simT.toFixed(1)+' s · учебная динамика');}
  window.H25_EXACT_VIEWS?.update(svg,current,H25);
  if(sound&&audio&&H25.tripped&&performance.now()-lastAlarm>600){lastAlarm=performance.now();const osc=audio.createOscillator(),g=audio.createGain();osc.frequency.value=800;g.gain.setValueAtTime(.05,audio.currentTime);g.gain.exponentialRampToValueAtTime(.001,audio.currentTime+.25);osc.connect(g);g.connect(audio.destination);osc.start();osc.stop(audio.currentTime+.26);}
 }

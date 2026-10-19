@@ -417,7 +417,8 @@
       );
       ['F1_GCV', 'F2_1_GCV', 'F2_2_GCV', 'F2_3_GCV', 'F2_4_GCV'].forEach(
         function (k, i) {
-          var threshold = [0, 0, 36.3, 44.8, 50.8][i];
+          // F2-4 switching follows the live KD4H setting, not a duplicated constant.
+          var threshold = i === 4 ? T.KD4H : [0, 0, 36.3, 44.8][i];
           lag(
             k,
             fl && fuel >= threshold
@@ -821,7 +822,14 @@
         keys = ['F1', 'F21', 'F22', 'F23', 'F24'],
         tags = ['F1_GCV', 'F2_1_GCV', 'F2_2_GCV', 'F2_3_GCV', 'F2_4_GCV'];
       keys.forEach(function (k, i) {
-        r[k] = !this.flameOn() || this.tags[tags[i]] < 5;
+        // Operator-confirmed indication: below KD4H ONLY F2-4 turns white.
+        // No KC4L hysteresis or delay is applied to this indication. Actual GCV
+        // position remains a lagged feedback signal and may still be closing.
+        if (k === 'F24') {
+          var ffd = this.tags.FOFFD, kd4h = this.tags.KD4H;
+          r[k] = !this.flameOn() || !Number.isFinite(ffd) ||
+            !Number.isFinite(kd4h) || ffd < kd4h;
+        } else r[k] = !this.flameOn() || this.tags[tags[i]] < 5;
       }, this);
       return r;
     },

@@ -14,6 +14,16 @@ jobs:
       - run: npm run build
       - run: npx playwright install --with-deps chromium
       - run: npm run test:browser
+      - name: Original-layout HMI controls and full viewport
+        run: |
+          python3 -m http.server 8001 --bind 127.0.0.1 > /tmp/h25-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID"' EXIT
+          node exact-startup/test-fill.cjs
+          node exact-startup/test.cjs
+          node exact-startup/test-burner.cjs
+          node exact-startup/test-navigation.cjs
+          node exact-startup/test-viewer.cjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:

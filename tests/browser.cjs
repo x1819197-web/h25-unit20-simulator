@@ -77,22 +77,24 @@ const root = path.resolve(__dirname, '..'),
         await p.goto(base + route);
         await p.waitForTimeout(80);
         const ku = route.includes('/ku/');
+        const exact = !ku && await p.evaluate(() => !!window.EXACT_STARTUP);
         const ids = ku
           ? ['9', '10']
-          : await p.evaluate(() => Object.keys(H25_SCREENS));
+          : await p.evaluate(() => Object.keys(window.EXACT_STARTUP ? EXACT_STARTUP.screens : H25_SCREENS));
         for (const id of ids) {
           if (ku)
             await p.evaluate((id) => {
               view = id;
               render();
             }, id);
+          else if (exact) await p.evaluate((id) => EXACT_STARTUP.navigate(id, true), id);
           else await p.evaluate((id) => loadScreen(id), id);
           let metrics = await p.evaluate(() => {
             const d = document.documentElement,
-              page = document.getElementById('page');
+              page = document.getElementById('page') || document.getElementById('screen-holder');
             let badTags = [...document.querySelectorAll('[data-tag]')]
               .filter((e) =>
-                ['—', 'BAD', 'NaN', 'undefined'].includes(e.textContent),
+                e.dataset.tag !== 'NA_TAG' && ['—', 'BAD', 'NaN', 'undefined'].includes(e.textContent),
               )
               .map((e) => e.dataset.tag);
             return {
