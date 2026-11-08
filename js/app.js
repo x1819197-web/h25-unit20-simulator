@@ -67,12 +67,14 @@ function renderOverlay(page, def) {
   if (def.buttons) {
     for (i = 0; i < def.buttons.length; i++) {
       var b = def.buttons[i];
-      h += '<div class="obtn' + (b.clear ? " clear" : "") + '" style="left:' + b.x + 'px;top:' + b.y + 'px;width:' +
+      var readOnly = (b.act === "none");
+      h += '<div class="obtn' + (b.clear ? " clear" : "") + (readOnly ? " ro" : "") +
+        '" style="left:' + b.x + 'px;top:' + b.y + 'px;width:' +
         b.w + 'px;height:' + b.h + 'px;font-size:' + b.fs + 'px;' +
         (b.bold ? 'font-weight:bold;' : '') + '"' +
         (b.g ? ' data-grp="' + b.g + '" data-val="' + b.v + '"' : '') +
         (b.to ? ' data-to="' + b.to + '"' : '') +
-        ' data-act="' + b.act + '">' + b.label + '</div>';
+        (readOnly ? '' : ' data-act="' + b.act + '"') + '>' + b.label + '</div>';
     }
   }
   page.innerHTML = h;
@@ -513,11 +515,9 @@ function wireOverlay(page) {
         if (act === "edit-load") {
           var nv = prompt("Load Set Value [MW] (0 - 32):", H25.tags["LOAD_SET"].toFixed(1));
           if (nv === null) return;
-          H25.tags["LOAD_SET"] = Math.max(0, Math.min(32, parseFloat(nv) || 0));
-          H25.push();
+          H25.setLoadSet(parseFloat(nv));
           return;
         }
-        if (act === "ffd") { H25.ctl.ffdStatus = b.getAttribute("data-val"); refreshButtons(); return; }
         H25.press(b.getAttribute("data-grp"), b.getAttribute("data-val"));
       };
     })(btns[i]);
@@ -625,9 +625,11 @@ window.onload = function () {
   loadScreen((m && H25_SCREENS[m[1]]) ? m[1] : "startup");
   H25.onTick(updateFbars);
   H25.onTick(refreshCustom);
+  H25.onTick(refreshButtons);
   H25.onTick(updatePolar);
   H25.onTick(updateOsbar);
   H25.startLoop();
+  buildTimeScaleBtn();
   if (location.search.indexOf("trainer") >= 0) buildTrainer();
   /* visible fullscreen button (viewport corner, outside the 1:1 HMI) */
   var fsb = document.createElement("div");
@@ -653,6 +655,27 @@ window.onload = function () {
   }
 };
 
+/* SIM tezlik tugmasi (HMI 1:1 dan tashqarida): ×1 / ×10 / ×60 / ×300.
+ * Fizika o'zgarmaydi — faqat sim vaqtining tezligi. */
+function buildTimeScaleBtn() {
+  var b = document.getElementById("tsbtn");
+  if (!b) {
+    b = document.createElement("div");
+    b.id = "tsbtn";
+    b.title = "Simulyatsiya tezligi (fizika o'zgarmaydi)";
+    document.getElementById("viewport").appendChild(b);
+  }
+  var steps = [1, 10, 60, 300];
+  function show() { b.textContent = "SIM \u00D7" + H25.timeScale; }
+  b.onclick = function (e) {
+    if (e) e.stopPropagation();
+    var i = steps.indexOf(H25.timeScale);
+    H25.setTimeScale(steps[(i + 1) % steps.length]);
+    show();
+  };
+  show();
+}
+
 /* Fault-injection trainer panel (?trainer=1). HMI stays 1:1 English;
  * this floating panel is outside the DIASYS screens, for instructors only. */
 function buildTrainer() {
@@ -672,9 +695,9 @@ function buildTrainer() {
   p.innerHTML = "<b>TRAINER — fault injection</b><br>" +
     btn("vib", "High vibration") + btn("exh", "Exhaust overtemp") +
     btn("lube", "Lube-oil leak") + btn("fuel", "Fuel-gas low") +
+    btn("flame", "Loss of flame") +
     '<button data-f="__clear">Clear + Reset</button>' +
-    "<div>Trip: " + (H25.tripped ? H25.tripCause : "—") + "</div>";
-  var bs = p.querySelectorAll("button");
+    "<div>Trip: " + (H25.tripped ? H25.tripCause : "—") + "</div>";  var bs = p.querySelectorAll("button");
   for (var i = 0; i < bs.length; i++) {
     bs[i].onclick = (function (b) {
       return function () {

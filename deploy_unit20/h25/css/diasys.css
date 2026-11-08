@@ -52,6 +52,8 @@ html, body {
   cursor: pointer; white-space: nowrap; overflow: hidden;
 }
 .obtn:active { border-style: inset; }
+.obtn.ro { cursor: default; }
+.obtn.ro:active { border-style: outset; }
 .obtn.orange { background: rgb(251,165,0); border-style: inset; }
 .obtn.clear { background: transparent; border: none; }
 .fbar { position: absolute; background: rgb(0,0,122); }
@@ -101,6 +103,11 @@ html, body {
 #fsbtn { position: fixed; right: 10px; bottom: 10px; z-index: 100;
   background: rgba(0,0,40,.85); color: #FFC107; border: 2px solid #FFC107;
   padding: 6px 12px; font-family: Arial, sans-serif; font-size: 12px;
+  font-weight: bold; cursor: pointer; border-radius: 4px; }
+/* sim-time scale badge (outside the 1:1 HMI replica) */
+#tsbtn { position: fixed; right: 10px; bottom: 46px; z-index: 100;
+  background: rgba(0,0,40,.85); color: #4FC3F7; border: 2px solid #4FC3F7;
+  padding: 5px 10px; font-family: Arial, sans-serif; font-size: 12px;
   font-weight: bold; cursor: pointer; border-radius: 4px; }
 /* trainer fault-injection panel (?trainer=1) — outside HMI, instructor only */
 #trainer { position: absolute; left: 8px; bottom: 8px; z-index: 50;

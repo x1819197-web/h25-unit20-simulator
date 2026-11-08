@@ -36,14 +36,14 @@ window.SCR_GEN = {
     ["LUBE_HDR_T", 175, 440, 80, 13, 10, "degC"],
   ],
   motors: [
-    {id:"gfc3", x:321, y:59, d:20},
-    {id:"gfc2", x:460, y:59, d:20},
-    {id:"gfc1", x:607, y:59, d:20},
+    {id:"gfc3", x:314, y:52, d:24},
+    {id:"gfc2", x:457, y:53, d:24},
+    {id:"gfc1", x:597, y:53, d:24},
   ],
   pumps: [
-    {id:"gfc3", x:300, y:59, d:20, dir:"down"},
-    {id:"gfc2", x:440, y:59, d:20, dir:"down"},
-    {id:"gfc1", x:586, y:59, d:20, dir:"down"},
+    {id:"gfc3", x:298, y:54, d:24, dir:"down"},
+    {id:"gfc2", x:437, y:54, d:24, dir:"down"},
+    {id:"gfc1", x:582, y:54, d:24, dir:"down"},
   ],
   syms: [
     {x:998, y:30, w:31, h:17, id:"sym41"},

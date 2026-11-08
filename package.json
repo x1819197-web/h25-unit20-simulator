@@ -4,7 +4,7 @@
   "private": true,
   "description": "UNIT-20 simulator (H25 + KU-20) — manba, deploy build.js orqali generatsiyalanadi",
   "scripts": {
-    "test": "node tests/test-a.js",
+    "test": "node tests/test-a.js && node tests/test-b.js",
     "build": "node build.js"
   },
   "engines": {
