@@ -1,7 +1,6 @@
-/* Screen 16 - TRIP MONITOR. */
+/* Native view metadata. Legacy measurement coordinates retained for tag inventory only; not used for layout. */
 window.SCR_TRIPM = {
   id: "tripm",
-  bg: "ref/16_trip_monitor.png",
   title: "16 TRIP MONITOR",
   nav: "TRIP MONITOR",
   navList: ["START-UP", "START CHECK", "TIMERS", "TRIP MONITOR", "DATA REPORT 1", "DATA REPORT 2", "MENU"],
@@ -42,5 +41,4 @@ window.SCR_TRIPM = {
     {x:933, y:466, w:103, h:31, fs:10, label:"MASTER RESET", g:null, v:null, act:"reset"},
     {x:1039, y:466, w:70, h:32, fs:11, label:"TRIP", g:null, v:null, act:"trip"},
   ],
-  render: function (page) { renderOverlay(page, this); }
 };

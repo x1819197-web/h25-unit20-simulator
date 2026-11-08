@@ -1,1196 +1,876 @@
-/* H25 UNIT-20 simulation engine — HAQIQIY VAQT (real-time), dt asosida.
- *
- * Har tick haqiqiy o'tgan vaqtni oladi (performance.now deltasi yoki 500 ms),
- * SIM.timeScale ga ko'paytiriladi va <= 5 s fizika qadamlariga bo'linadi.
- * Hech qanday setTimeout/Date bilan sekvensiya YO'Q: hamma narsa sim vaqtida.
- *
- * Sekvensiya: PPE-10-1420 "Plant Start-up/Shut-down Curve" (real daqiqalar):
- *   crank 20 %/min -> 1456 rpm -> purge 12 min -> ignition 60 s ->
- *   warm-up 3 min -> accelerate 10.5 %/min -> FSNL -> sync -> load curve
- *   (0.12 -> 2.7 MW, 30 min -> 0.54 -> 6.78 MW, 30 min -> 1.36 MW/min).
- * Himoyalar: Karta ustavok GTU-2,3 (2025) — 12H/12H_P, 39VTX, 63QTX,
- * 26QT, 63FGLT, 66TXT, 30SPT, 63HQLT, 26DT.
- *
- * Displey qiymatlari baza rejimida referens bilan aynan mos: TC bank
- * o'rtachasi 595.0, spread 32.4/31.8/25.0 — hech qanday yashirin
- * kalibrovka (cal offset) ishlatilmaydi. */
-
-window.H25_DEFAULT_MOTORS = function () {
-  return {
-    eop: {run:false, auto:true, standby:false, stopLatch:false},
-    mop1: {run:true, auto:true, standby:false, stopLatch:false},
-    mop2: {run:false, auto:true, standby:true, stopLatch:true},
-    mist1: {run:false, auto:true, standby:true, stopLatch:true},
-    mist2: {run:true, auto:true, standby:false, stopLatch:false},
-    jop: {run:false, auto:true, standby:false, stopLatch:false},
-    tgm: {run:false, auto:true, standby:false, stopLatch:true},
-    hop1: {run:false, auto:true, standby:true, stopLatch:true},
-    hop2: {run:true, auto:true, standby:false, stopLatch:false},
-    ven1: {run:true, auto:false, standby:true, stopLatch:false},
-    ven2: {run:true, auto:true, standby:false, stopLatch:false},
-    bc1: {run:true, auto:true, standby:false, stopLatch:false},
-    bc2: {run:true, auto:false, standby:true, stopLatch:false},
-    evac1: {run:true, auto:true, standby:false, stopLatch:false, startGray:true},
-    gfc1: {run:true, auto:true, standby:false, stopLatch:false},
-    gfc2: {run:false, auto:true, standby:true, stopLatch:true},
-    gfc3: {run:true, auto:true, standby:false, stopLatch:false},
-    crank: {run:false, auto:true, standby:false, stopLatch:false}
+/* UNIT-20 training model v3. Single simulation clock, no DOM in physics.
+ * Educational approximations, NOT OEM protection or performance certification.
+ * Each tick commits all derived tags before publishing a snapshot. */
+(function () {
+  'use strict';
+  var clamp = function (v, a, b) {
+    return Math.max(a, Math.min(b, v));
   };
-};
-
-window.H25 = {
-  tags: {},
-  listeners: [],
-  timeScale: 1,
-
-  NOMSPD: 7280,   /* nominal 100 % tezlik, min-1 */
-  NOMP: 28.6,     /* nominal quvvat, MW */
-
-  ctl: {
-    gtStatus: "Base Load",
-    ffdStatus: "FFDT",
-    location: "LOCAL",
-    cooldown: "ON",
-    masterMode: "AUTO",
-    master: "STOP",
-    speedMode: "AUTO",
-    loadMode: "PRE SELECT",
-    governor: "LLM",
-    /* screen 3 synchro/exciter */
+  var clone = function (v) {
+    return JSON.parse(JSON.stringify(v));
+  };
+  var motorIds = [
+    'eop',
+    'mop1',
+    'mop2',
+    'mist1',
+    'mist2',
+    'jop',
+    'tgm',
+    'hop1',
+    'hop2',
+    'ven1',
+    'ven2',
+    'bc1',
+    'bc2',
+    'evac1',
+    'gfc1',
+    'gfc2',
+    'gfc3',
+    'crank',
+  ];
+  var steps = [
+    ['Cranking', 3],
+    ['Purge', 4],
+    ['GT Firing', 3],
+    ['Warming up', 5],
+    ['Accelerating', 6],
+    ['Seq. Complete', 3],
+    ['Loading', 8],
+  ];
+  var initialCtl = {
+    gtStatus: 'Base Load',
+    ffdStatus: 'FFDT',
+    location: 'LOCAL',
+    cooldown: 'ON',
+    masterMode: 'AUTO',
+    master: 'START',
+    speedMode: 'AUTO',
+    loadMode: 'PRE SELECT',
+    governor: 'LLM',
     brk52G: true,
     field41: true,
-    fieldMode: "AUTO",
-    avrMode: "AVR",
-    pss: "OFF",
-    s43L: "OFF",
-    s43G: "AUTO",
-    s43OPE: "TCP-HMI",
+    fieldMode: 'AUTO',
+    avrMode: 'AVR',
+    pss: 'OFF',
+    s43L: 'OFF',
+    s43G: 'AUTO',
+    s43OPE: 'TCP-HMI',
     ibhLock: true,
-    osTest: "DISABLE",
-    lift: "",
+    osTest: 'DISABLE',
+    lift: '',
     osMainRun: false,
-    osBackupRun: false
-  },
-  /* aux motors: run -> red RUNNING; stop -> green STOPPED. */
-  motors: window.H25_DEFAULT_MOTORS(),
-
-  seq: "Base Load",
-  tripped: false,
-  tripCause: "",
-  tripItems: {},
-  faults: { vib: false, exh: false, lube: false, fuel: false, flame: false },
-  spreadAlarm: false,
-  lastReset: 0,
-  raiseLower: 0,
-  vRaiseLower: 0,
-  iRaiseLower: 0,
-
-  /* ------------------------------------------------------------------ */
-  init: function () {
-    var T = this.tags = {};
-    for (var k in H25_TAGS) {
-      var d = H25_TAGS[k];
-      T[k] = (d && typeof d === "object") ? d.v : d;
-    }
-    this.motors = window.H25_DEFAULT_MOTORS();
-    this.timeScale = (H25_CFG.SIM && H25_CFG.SIM.timeScale) || 1;
-    try {
-      var mts = (location.search || "").match(/[?&]ts=(\d+)/);
-      if (mts) this.setTimeScale(+mts[1]);
-    } catch (e) {}
-
-    this.seq = "Base Load";
-    this.ctl.gtStatus = "Base Load";
-    this.ctl.ffdStatus = "FFDT";
-    this.ctl.brk52G = true;
-    this.ctl.field41 = true;
-    this.ctl.master = "STOP";
-    this.ctl.masterMode = "AUTO";
-    this.ctl.loadMode = "PRE SELECT";
-    this.ctl.speedMode = "AUTO";
-    this.ctl.governor = "LLM";
-    this.ctl.cooldown = "ON";
-    this.ctl.location = "LOCAL";
-    this.ctl.osTest = "DISABLE";
-    this.ctl.osMainRun = false;
-    this.ctl.osBackupRun = false;
-    this.ctl.osTestRun = "";
-    this.tripped = false;
-    this.tripCause = "";
-    this.tripItems = {};
-    this.faults = { vib: false, exh: false, lube: false, fuel: false, flame: false };
-    this.spreadAlarm = false;
-
-    /* TC ikki-inersiyali holati: seedli bias/fazalar, Math.random YO'Q. */
-    var C = H25_CFG.TC;
-    var rng = H25_RNG(C.seed);
-    this.tcBias = []; this.tcPh1 = []; this.tcPh2 = [];
-    this.tcGas = []; this.tcMetal = [];
-    for (var i = 0; i < 18; i++) {
-      this.tcBias.push(C.biasMin + rng() * (C.biasMax - C.biasMin));
-      this.tcPh1.push(rng() * 2 * Math.PI);
-      this.tcPh2.push(rng() * 2 * Math.PI);
-      var bk = this.tcTag(i + 1);
-      this.tcGas.push(T[bk]);
-      this.tcMetal.push(T[bk]);
-    }
-
-    this._simT = 0;
-    this._phaseT = 0;
-    this._loadT = 0;
-    this._dphi = 0;
-    this._wheel = 499.9;
-    this._flame = true;
-    this._exhTgt = 595;
-    this._exhFault = 0;
-    this._vibRamp = 0;
-    this._kvSet = 10.92;
-    this._qSet = 4.3;
-    this._delays = {};
-    this._spreadSt = { t: 0, alarm: false };
-    this._prevSeq = "Base Load";
-
-    /* ?fault=vib,exh,lube,fuel,flame preselects trainer faults */
-    try {
-      var m = (location.search || "").match(/[?&]fault=([^&]+)/);
-      if (m) {
-        var parts = m[1].split(",");
-        for (var q = 0; q < parts.length; q++) {
-          var f = parts[q].replace("fuelgas", "fuel").replace("vibration", "vib");
-          if (f in this.faults) this.faults[f] = true;
-        }
-      }
-    } catch (e) {}
-  },
-
-  onTick: function (fn) { this.listeners.push(fn); },
-  baseOf: function (k) { return H25_TAGS[k].v; },
-  tcTag: function (i) { return "TC" + (i < 10 ? "0" + i : i); },
-  clamp: function (v, a, b) { return v < a ? a : (v > b ? b : v); },
-  setTimeScale: function (v) {
-    this.timeScale = Math.max(1, Math.min(300, +v || 1));
-    return this.timeScale;
-  },
-
-  /* birinchi tartibli kechikish: h sekundda tgt ga intiladi */
-  lag: function (k, tgt, tau, h) {
-    var T = this.tags, cur = +T[k];
-    if (!isFinite(cur)) cur = tgt;
-    T[k] = cur + (tgt - cur) * (1 - Math.exp(-h / (tau || 1)));
-  },
-
-  /* ------------------------------------------------------------------ */
-  /* ASOSIY TICK: haqiqiy dt -> sim dt -> <=5 s qadamlar */
-  tick: function (dtMs) {
-    var realS = (dtMs == null ? H25_CFG.TICK_MS : dtMs) / 1000;
-    if (!(realS > 0)) { this.push(); return; }
-    var sim = realS * (this.timeScale || 1);
-    this._simT += sim;
-    var maxH = (H25_CFG.SIM && H25_CFG.SIM.maxSubstepS) || 5;
-    var rem = sim, guard = 0;
-    while (rem > 1e-9 && guard < 20000) {
-      var h = Math.min(rem, maxH);
-      this.step(h);
-      rem -= h;
-      guard++;
-    }
-    this.push();
-    for (var i = 0; i < this.listeners.length; i++) this.listeners[i](this.tags);
-  },
-
-  step: function (h) {
-    this._phaseT += h;
-    this.applyJogs(h);
-    this.updateSequence(h);
-    this.updateFuel(h);
-    this.updateExhaustTarget(h);
-    this.updateOverspeed(h);
-    this.updateElectrical(h);
-    this.updateAux(h);
-    this.updateTC(h, this._flame ? "run" : "cool", this._exhTgt);
-    this.recomputeExhaust(h);
-    this.updateDerived(h);
-    this.updateFfdStatus();
-    this.protections(h);
-  },
-
-  /* ------------------------------------------------------------------ */
-  /* RAISE / LOWER jog buyruqlari (bosib turiladi) */
-  applyJogs: function (h) {
-    var T = this.tags;
-    if (this.raiseLower) {
-      if (this.ctl.osMainRun || this.ctl.osBackupRun) {
-        this._osRefPct = this.clamp((this._osRefPct || 110) +
-          0.2 * this.raiseLower * h, 100, 112);
-      } else if (this.running()) {
-        T["LOAD_SET"] = this.clamp((+T["LOAD_SET"] || 30) +
-          0.1 * this.raiseLower * h, 0, 32);
-      }
-    }
-    if (this.vRaiseLower && !this.ctl.brk52G) {
-      this._kvSet = this.clamp(this._kvSet + 0.02 * this.vRaiseLower * h, 9.5, 11.5);
-    }
-    if (this.iRaiseLower && this.ctl.brk52G) {
-      this._qSet = this.clamp(this._qSet + 0.08 * this.iRaiseLower * h, -12, 16);
-    }
-  },
-
-  setLoadSet: function (v) {
-    this.tags["LOAD_SET"] = this.clamp(+v || 0, 0, 32);
-    this.push();
-    this.refreshUI();
-  },
-
-  /* ------------------------------------------------------------------ */
-  /* SEKVENSIYA (PPE-10-1420) */
-  setSeq: function (s) {
-    if (this.seq !== s) {
-      this._prevSeq = this.seq;
-      this.seq = s;
-      this._phaseT = 0;
-      if (s === "Cranking" || s === "Purge") {
-        this.motors.crank.run = true;
-        this.motors.crank.stopLatch = false;
-      } else {
-        this.motors.crank.run = false;
-      }
-      if (s === "Cooling Down") {
-        this.motors.tgm.run = true;
-        this.motors.tgm.stopLatch = false;
-      } else {
-        this.motors.tgm.run = false;
-      }
-      if (this._prevSeq === "Seq. Complete") this.tags["PURGE_CURRENT"] = 0;
-    }
-    this.ctl.gtStatus = s;
-  },
-
-  updateSequence: function (h) {
-    var T = this.tags, S = H25_CFG.SEQ, sp = +T.SPEED || 0;
-
-    if (this.seq === "Cranking") {
-      sp += this.NOMSPD * (S.crankRatePctPerMin / 100) / 60 * h;
-      if (sp >= S.purgeSpeed) { sp = S.purgeSpeed; this.setSeq("Purge"); }
-      T["PURGE_CURRENT"] = 0;
-    } else if (this.seq === "Purge") {
-      sp = Math.min(S.purgeSpeed, sp + 300 * h);
-      T["PURGE_CURRENT"] = Math.min(S.purgeMin, this._phaseT / 60);
-      if (this._phaseT >= S.purgeMin * 60 && this.ctl.masterMode !== "CRANK") {
-        this.setSeq("GT Firing");
-      }
-    } else if (this.seq === "GT Firing") {
-      sp = S.purgeSpeed;
-      T["PURGE_CURRENT"] = 0;
-      if (this._phaseT >= S.ignitionHoldS) this.setSeq("Warming up");
-    } else if (this.seq === "Warming up") {
-      sp = S.purgeSpeed;
-      if (this._phaseT >= S.warmupMin * 60 && this.ctl.masterMode !== "FIRE") {
-        this.setSeq("Accelerating");
-      }
-    } else if (this.seq === "Accelerating") {
-      sp += this.NOMSPD * (S.accelPctPerMin / 100) / 60 * h;
-      if (sp >= this.NOMSPD) { sp = this.NOMSPD; this.setSeq("Seq. Complete"); }
-    } else if (this.seq === "Seq. Complete") {
-      /* sinxronoskop sekin aylanadi: 0.035 Hz slip */
-      if (this.ctl.osMainRun || this.ctl.osBackupRun) {
-        sp = +T["SPEED"] || this.NOMSPD;       /* overspeed test boshqaradi */
-      } else if (this.ctl.speedMode === "MANUAL" && this.raiseLower) {
-        sp = this.clamp(sp + 3 * this.raiseLower * h, 7000, 7480);
-      } else {
-        sp = this.NOMSPD * 1.0007;
-      }
-    } else if (this.seq === "Loading" || this.seq === "Base Load" ||
-               this.seq === "Part Load" || this.seq === "Unloading") {
-      sp = this.NOMSPD;
-      this.updateLoad(h);
-    } else if (this.seq === "Fired Shutdown") {
-      if (this._phaseT >= 2) this.setSeq("Coast Down");
-    } else if (this.seq === "Coast Down") {
-      sp = sp * Math.exp(-h / (S.coastTauS || 420));
-      if (sp < 150) { sp = 0; this.setSeq("Cooling Down"); }
-    } else if (this.seq === "Cooling Down") {
-      sp = 0;
-      if (!this.tripped && this._wheel < (S.coolTargetC || 66)) this.setSeq("Ready to Start");
-    } else if (this.seq === "Ready to Start") {
-      sp = sp * Math.exp(-h / (S.coastTauS || 420));
-      if (sp < 1) sp = 0;
-    }
-
-    T["SPEED"] = sp;
-    T["SPEED_PCT"] = sp / (this.NOMSPD / 100);
-    this._updateWheel(h);
-  },
-
-  /* yuklama egri chizig'i: t - yuklash boshlanganidan (s), set - MW */
-  loadCurve: function (t, set) {
-    var S = H25_CFG.SEQ;
-    var r0 = S.loadRate0to10 / 60;         /* MW/s */
-    var r1 = S.loadRate10to25 / 60;
-    var r2 = S.loadRate25plus / 60;
-    var t1 = S.p10MW / r0;                              /* 1350 s */
-    var t2 = t1 + S.hold10Min * 60;                     /* +30 min */
-    var t3 = t2 + (S.p25MW - S.p10MW) / r1;             /* +453 s */
-    var t4 = t3 + S.hold25Min * 60;                     /* +30 min */
-    var t5 = t4 + Math.max(0, set - S.p25MW) / r2;      /* +963 s */
-    if (t < t1) return r0 * t;
-    if (t < t2) return S.p10MW;
-    if (t < t3) return S.p10MW + r1 * (t - t2);
-    if (t < t4) return S.p25MW;
-    if (t < t5) return S.p25MW + r2 * (t - t4);
-    return set;
-  },
-
-  setpointPower: function () {
-    var s = +this.tags["LOAD_SET"];
-    if (!isFinite(s)) s = 30;
-    return this.clamp(s - 1.4, 0, 30.6);
-  },
-
-  updateLoad: function (h) {
-    var T = this.tags, S = H25_CFG.SEQ;
-    var P = Math.max(0, +T["GEN_POWER"] || 0);
-    var set = this.setpointPower();
-
-    if (this.seq === "Loading") {
-      this._loadT += h;
-      P = this.loadCurve(this._loadT, set);
-      T["GEN_POWER"] = P;
-      if (P >= set - 0.001 && this._loadT > 120) {
-        this.setSeq(set >= 27.5 ? "Base Load" : "Part Load");
-      }
-    } else if (this.seq === "Unloading") {
-      P -= (S.unloadRate / 60) * h;
-      if (P <= 0.01) {
-        P = 0;
-        T["GEN_POWER"] = 0;
-        this.ctl.brk52G = false;
-        this._dphi = 0;
-        this._qSet = 0;
-        this.setSeq("Fired Shutdown");
-      } else {
-        T["GEN_POWER"] = P;
-      }
-    } else { /* Base Load / Part Load: setpointga 1.36 MW/min */
-      var step = (S.loadRate25plus / 60) * h;
-      if (P < set - 0.001) P = Math.min(set, P + step);
-      else if (P > set + 0.001) P = Math.max(set, P - step);
-      T["GEN_POWER"] = P;
-      var want = set >= 27.5 ? "Base Load" : "Part Load";
-      if (Math.abs(P - set) < 0.03 && this.seq !== want) this.setSeq(want);
-    }
-    T["MW_FDBK"] = T["GEN_POWER"];
-  },
-
-  _updateWheel: function (h) {
-    var T = this.tags, S = H25_CFG.SEQ;
-    var sp = +T["SPEED"] || 0, P = Math.max(0, +T["GEN_POWER"] || 0);
-    var wTgt;
-    if (this._flame) wTgt = 490 + 9.9 * Math.min(1, P / 28.6);
-    else if (sp > 200) wTgt = 120 + 350 * Math.min(1, sp / this.NOMSPD);
-    else wTgt = 60;
-    var tau = (this.ctl.cooldown === "ON") ? (S.coolTauOnS || 300) : (S.coolTauOffS || 900);
-    if (wTgt < this._wheel) this._wheel += (wTgt - this._wheel) * (1 - Math.exp(-h / tau));
-    else this._wheel += (wTgt - this._wheel) * (1 - Math.exp(-h / 60));
-    T["WHEEL_MAX_T"] = this._wheel;
-    if (this.seq === "Cooling Down" && !this.tripped &&
-        this._wheel < (S.coolTargetC || 66)) this.setSeq("Ready to Start");
-  },
-
-  /* ------------------------------------------------------------------ */
-  /* YONILG'I: FFD -> SRV/GCV -> sarf */
-  updateFuel: function (h) {
-    var T = this.tags, S = H25_CFG.SEQ;
-    var P = Math.max(0, +T["GEN_POWER"] || 0);
-    var seq = this.seq, tgt = 0;
-
-    if (seq === "GT Firing") tgt = S.ignFfd;
-    else if (seq === "Warming up") tgt = S.warmFfd;
-    else if (seq === "Accelerating") {
-      var k = this.clamp(((+T["SPEED"] || 0) - S.purgeSpeed) / (this.NOMSPD - S.purgeSpeed), 0, 1);
-      tgt = S.warmFfd + k * 8;
-    } else if (seq === "Seq. Complete") tgt = 30;
-    else if (seq === "Loading" || seq === "Base Load" || seq === "Part Load" || seq === "Unloading") {
-      tgt = 30 + 35.2 * Math.min(1, P / 28.6);
-    }
-    if (this.faults.flame && this.running()) tgt = 0;
-    if (this.tripped) tgt = 0;
-
-    /* FFD limiterlari (screen 2 barlari) yuk bilan siljiydi */
-    var d = (+T["LOAD_SET"] || 30) - 30;
-    T["FFD_MIN"] = 9.8;
-    T["FFD_SU"] = 100.0;
-    T["FFD_SD"] = 100.0;
-    T["FFD_ACC"] = 73.0 + d * 0.8;
-    T["FFD_SPD"] = 77.8 + d * 1.2;
-    T["FFD_LLM"] = 65.7 + d * 1.5;
-    T["FFD_TEMP"] = 64.0 + d * 1.5;
-    if (this.ctl.governor === "LLM") tgt = Math.min(tgt, T["FFD_LLM"]);
-    else tgt = Math.min(tgt, T["FFD_SPD"]);
-
-    var tau = (tgt > (+T["FOFFD"] || 0)) ? 2.5 : 1.5;
-    this.lag("FOFFD", Math.max(0, tgt), tau, h);
-
-    var f = +T["FOFFD"] || 0;
-    this.lag("SRV_POS", 0.432 * f, 2, h);
-    this.lag("F1_GCV", 0.374 * f, 2, h);
-    this.lag("F2_1_GCV", 0.716 * f, 2, h);
-    var kd2 = +T["KD2H"] || 36.3, kd3 = +T["KD3H"] || 44.8, kd4 = +T["KD4H"] || 50.8;
-    this.lag("F2_2_GCV", f >= kd2 ? 0.716 * f : 0, 2, h);
-    this.lag("F2_3_GCV", f >= kd3 ? 0.716 * f : 0, 2, h);
-    this.lag("F2_4_GCV", f >= kd4 ? 0.716 * f : 0, 2, h);
-    T["F20RATIO"] = 0.92;
-
-    this._flame = !this.tripped && tgt > 5 && f > 5 &&
-      ["GT Firing", "Warming up", "Accelerating", "Seq. Complete",
-       "Loading", "Base Load", "Part Load", "Unloading"].indexOf(seq) >= 0;
-  },
-
-  /* ------------------------------------------------------------------ */
-  /* ELEKTRIKA, SINXRONIZATSIYA (43-25L / 43-25G / 52G / 41) */
-  syncOk: function () {
-    var T = this.tags, SY = H25_CFG.SYNC;
-    return !this.tripped && !this.ctl.brk52G && this.ctl.field41 &&
-      (+T["SPEED"] || 0) >= 7200 &&
-      Math.abs(+T["SYNC_DF"] || 0) <= SY.dfMax &&
-      Math.abs(+T["SYNC_DV"] || 0) <= SY.dvPct &&
-      Math.abs(+T["SYNC_DPHI"] || 0) <= SY.dphiMax;
-  },
-
-  closeBreaker: function () {
-    if (this.tripped || this.ctl.brk52G) return false;
-    this.ctl.brk52G = true;
-    this._dphi = 0;
-    this._qSet = 4.3;
-    this._loadT = 0;
-    this.tags["GEN_POWER"] = 0;
-    this.tags["MW_FDBK"] = 0;
-    this.setSeq("Loading");
-    this.refreshUI();
-    return true;
-  },
-
-  updateElectrical: function (h) {
-    var T = this.tags, SY = H25_CFG.SYNC;
-    var sp = +T["SPEED"] || 0;
-    var ratio = this.clamp(sp / this.NOMSPD, 0, 1.2);
-    var closed = !!this.ctl.brk52G;
-
-    T["GRID_HZ"] = SY.gridHz;
-    T["GRID_KV"] = SY.gridKV;
-    T["GEN_HZ"] = closed ? SY.gridHz : SY.gridHz * ratio;
-
-    var vTgt;
-    if (closed) vTgt = SY.gridKV;
-    else if (this.ctl.field41) vTgt = this._kvSet * Math.min(1, sp / 4000);
-    else vTgt = 0;
-    this.lag("GEN_KV", vTgt, 2.0, h);
-
-    this.lag("GEN_MVAR", closed ? this._qSet : 0, 3.0, h);
-
-    var P = Math.max(0, +T["GEN_POWER"] || 0);
-    var Q = Math.max(0, +T["GEN_MVAR"] || 0);
-    T["GEN_A"] = closed ? 53.035 * P : 0;
-    T["GEN_PF"] = closed ? (P > 0.05 ? P / Math.sqrt(P * P + Q * Q) : 0.99) : 0;
-    T["EXC_V"] = this.ctl.field41 ? 46.0 * (+T["GEN_KV"] || 0) / 10.92 : 0;
-    T["EXC_A"] = this.ctl.field41 ? 5.6 * (0.6 + 0.4 * Math.min(1, P / 28.6)) : 0;
-
-    T["SYNC_DF"] = (+T["GEN_HZ"] || 0) - SY.gridHz;
-    T["SYNC_DV"] = ((+T["GEN_KV"] || 0) - SY.gridKV) / SY.gridKV * 100;
-
-    var before = this._dphi;
-    if (closed) this._dphi = 0;
-    else {
-      this._dphi += 360 * (+T["SYNC_DF"] || 0) * h;
-      while (this._dphi > 180) this._dphi -= 360;
-      while (this._dphi < -180) this._dphi += 360;
-    }
-    T["SYNC_DPHI"] = this._dphi;
-    T["SYNC_OK"] = this.syncOk() ? 1 : 0;
-
-    /* avtosinxronizator: Seq. Complete da faza oynasidan o'tishda yopadi */
-    var crossed = before !== 0 && this._dphi !== 0 && (before > 0) !== (this._dphi > 0);
-    if (this.seq === "Seq. Complete" && !closed && this.ctl.s43G === "AUTO" &&
-        !this.ctl.osMainRun && !this.ctl.osBackupRun &&
-        this._phaseT > 2 &&
-        Math.abs(+T["SYNC_DF"] || 0) <= SY.dfMax &&
-        Math.abs(+T["SYNC_DV"] || 0) <= SY.dvPct &&
-        (Math.abs(this._dphi) <= SY.dphiMax || crossed)) {
-      this.closeBreaker();
-    }
-
-    T["GEN_MWH"] = (+T["GEN_MWH"] || 488380.5) + P * h / 3600;
-
-    if (this.running()) {
-      var dh = h / 3600;
-      T["EOH_L"] = (+T["EOH_L"] || 23076.5) + dh;
-      T["EOH_R"] = (+T["EOH_R"] || 23076.5) + dh;
-      T["AOH_L"] = (+T["AOH_L"] || 18476.5) + dh;
-      T["AOH_R"] = (+T["AOH_R"] || 18476.5) + dh;
-      T["GAS_L"] = (+T["GAS_L"] || 18476.5) + dh;
-      T["GAS_R"] = (+T["GAS_R"] || 18476.5) + dh;
-    }
-  },
-
-  running: function () {
-    return !this.tripped && !!this.ctl.brk52G &&
-      (this.seq === "Base Load" || this.seq === "Part Load" ||
-       this.seq === "Loading" || this.seq === "Unloading");
-  },
-
-  spinning: function () {
-    return (+this.tags["SPEED"] || 0) > 500 || this._flame;
-  },
-
-  /* ------------------------------------------------------------------ */
-  /* YORDAMCHI TIZIMLAR: moy, gidravlika, sovutish, tebranish, gaz */
-  updateAux: function (h) {
-    var T = this.tags, sp = +T["SPEED"] || 0;
-    var ratio = this.clamp(sp / this.NOMSPD, 0, 1);
-    var P = Math.max(0, +T["GEN_POWER"] || 0);
-    var mop = this.motors.mop1.run || this.motors.mop2.run;
-    var eop = this.motors.eop.run;
-
-    /* lube oil header (63QTX) */
-    if (!this.faults.lube) {
-      this.lag("LO_HDR_P", mop ? 0.172 : (eop ? 0.115 : 0), 1.5, h);
-      this.lag("MOP_DISCH", mop ? 0.550 : (eop ? 0.400 : 0), 1.5, h);
-    } else {
-      T["LO_HDR_P"] = Math.max(0, (+T["LO_HDR_P"] || 0) - 0.04 * h);
-      T["MOP_DISCH"] = Math.max(0, (+T["MOP_DISCH"] || 0) - 0.06 * h);
-    }
-    T["LO_HDR_P2"] = (+T["LO_HDR_P"] || 0) + 0.001;
-    T["LO_FILT_DP"] = 0.020;
-
-    /* EOP avtomatik ishga tushadi bosim pasaysa (real interlock) */
-    if (!this.motors.eop.run && this.motors.eop.auto &&
-        (+T["LO_HDR_P"] || 0) < 0.10 && (sp > 100 || this._flame)) {
-      this.motors.eop.run = true;
-      this.motors.eop.stopLatch = false;
-    }
-
-    this.lag("LUBE_HDR_T", this._flame ? 52.5 : 35, 240, h);
-
-    /* hydraulic supply (63HQLT) */
-    var hop = this.motors.hop1.run || this.motors.hop2.run;
-    this.lag("HYD_OIL_P", hop ? 9.59 : 0, 1.5, h);
-
-    /* fuel gas supply (63FGLT) */
-    if (this.faults.fuel) {
-      var p1 = +T["P1_PRESS"];
-      if (!isFinite(p1)) p1 = 3.579;
-      T["P1_PRESS"] = Math.max(0, p1 - 0.5 * h);
-    } else {
-      this.lag("P1_PRESS", 3.579, 2, h);
-    }
-
-    /* tebranish: tezlikka proporsional + fault rampasi */
-    var vb = function (k) { return (H25_TAGS[k].v || 0) * ratio; };
-    if (this.faults.vib && this.running()) this._vibRamp += 12 * h;
-    else this._vibRamp = Math.max(0, this._vibRamp - 6 * h);
-    T["VIB_2BX"] = vb("VIB_2BX") + this._vibRamp;
-    T["VIB_2BY"] = vb("VIB_2BY") + this._vibRamp * 0.65;
-    T["VIB_1BX"] = vb("VIB_1BX") + this._vibRamp * 0.20;
-    T["VIB_1BY"] = vb("VIB_1BY");
-    T["VIB_EEBX"] = vb("VIB_EEBX");
-    T["VIB_EEBY"] = vb("VIB_EEBY");
-    T["VIB_TEBX"] = vb("VIB_TEBX");
-    T["VIB_TEBY"] = vb("VIB_TEBY");
-
-    /* kompressor / generator issiqlik nuqtalari */
-    this.lag("CPR_IN_T", 23.6 - 2.3 * ratio, 30, h);
-    this.lag("CPR_OUT_P", 1.30 * Math.pow(Math.max(0, ratio), 1.6), 4, h);
-    this.lag("CPR_OUT_T", 25 + 383.6 * (0.55 * ratio + 0.45 * Math.min(1, P / 28.6)), 20, h);
-    this.lag("GAS_FLOW", Math.max(0, (+T["FOFFD"] || 0) - 9.8) / 55.4 * 6626, 2, h);
-    this.lag("FUEL_FLOW", Math.max(0, (+T["FOFFD"] || 0) - 9.8) / 55.4 * 6626, 2, h);
-    T["FUEL_GAS_T"] = this._flame ? 104.7 : 23.6;
-    T["FUEL_GAS_P"] = Math.min(3.577, +T["P1_PRESS"] || 0);
-    T["FG_CT"] = 102.4;
-    T["P2_PRESS"] = 0.3 + 2.19 * Math.min(1, Math.max(0, (+T["FOFFD"] || 0) / 65.2));
-
-    /* stator / cooling air follows load */
-    this.lag("STATOR_A", 40 + 49.3 * Math.min(1, P / 28.6), 120, h);
-    this.lag("STATOR_B", 42 + 49.3 * Math.min(1, P / 28.6), 120, h);
-    this.lag("STATOR_C", 41 + 49.8 * Math.min(1, P / 28.6), 120, h);
-    this.lag("WARM_AIR_T", 30 + 47.1 * Math.min(1, P / 28.6), 120, h);
-    this.lag("CLR_OUT_T", 23.4 + 10.0 * Math.min(1, P / 28.6), 120, h);
-  },
-
-  /* ------------------------------------------------------------------ */
-  /* CHIQISH HARORATI: 18 TC ikki-inersiyali model */
-  updateTC: function (h, mode, exhTgt) {
-    var C = H25_CFG.TC, T = this.tags, EXM = H25_EXM;
-    var tamb = +T["AMB_T"] || 23.6;
-    var tauG = (mode === "run") ? C.tauRun : C.tauGasCool;
-    var tauM = (mode === "run") ? C.tauMetalRun : C.tauMetalCool;
-    for (var i = 1; i <= 18; i++) {
-      var tag = this.tcTag(i);
-      var off = H25_TAGS[tag].v - 595.0;
-      var gasTgt = (mode === "run") ? exhTgt + off + this.tcBias[i - 1] : tamb;
-      var r = EXM.tcStep(this.tcGas[i - 1], this.tcMetal[i - 1],
-                         gasTgt, tauG, tauM, h, C.metalW);
-      this.tcGas[i - 1] = r[0];
-      this.tcMetal[i - 1] = r[1];
-      T[tag] = r[2] + EXM.smoothNoise(this._simT, this.tcPh1[i - 1], this.tcPh2[i - 1]);
-    }
-  },
-
-  updateExhaustTarget: function (h) {
-    var T = this.tags, P = Math.max(0, +T["GEN_POWER"] || 0);
-    var sp = +T["SPEED"] || 0, base = 25;
-    if (this._flame) {
-      var seq = this.seq;
-      if (seq === "GT Firing") base = 300;
-      else if (seq === "Warming up") base = 320;
-      else if (seq === "Accelerating") {
-        base = 320 + 30 * this.clamp((sp - 1456) / (this.NOMSPD - 1456), 0, 1);
-      } else if (seq === "Seq. Complete") base = 350;
-      else base = 350 + 245 * Math.sqrt(Math.min(1, P / 28.6));
-      if (P > 28.6) base += (P - 28.6) * 5.5;
-    }
-    if (this.faults.exh && this._flame) this._exhFault = Math.min(90, this._exhFault + 8 * h);
-    else this._exhFault = Math.max(0, this._exhFault - 4 * h);
-    this._exhTgt = base + this._exhFault;
-  },
-
-  recomputeExhaust: function (h) {
-    var T = this.tags, EXM = H25_EXM, tcs = [];
-    for (var i = 1; i <= 18; i++) tcs.push(+T[this.tcTag(i)] || 0);
-    var mean = EXM.exTempMean(tcs);
-    T["EXH_T"] = mean;
-    var sp = EXM.exSpreads(tcs);
-    T["SPREAD_1"] = sp.s1;
-    T["SPREAD_2"] = sp.s2;
-    T["SPREAD_3"] = sp.s3;
-    T["EXH_SPREAD_3"] = sp.s3;
-    T["ALLOW_SPREAD"] = EXM.allowSpread(Math.max(0, +T["GEN_POWER"] || 0));
-    for (var j = 1; j <= 18; j++) {
-      var ct = "CT" + (j < 10 ? "0" + j : j);
-      T[ct] = T[this.tcTag(j)];
-    }
-    T["TX_MED"] = mean;
-    T["OS_EXH_T"] = mean;
-
-    if (!this.tripped) {
-      var st = EXM.spreadStep(this._spreadSt, sp.s1, T["ALLOW_SPREAD"], h);
-      this.spreadAlarm = (st !== "ok");
-      if (st === "trip") this.trip("HIGH EXHAUST TEMPERATURE SPREAD", "30SPT");
-    } else {
-      this._spreadSt.t = 0;
+    osBackupRun: false,
+  };
+  window.H25 = {
+    tags: {},
+    ctl: clone(initialCtl),
+    motors: {},
+    listeners: [],
+    events: [],
+    sessionId: 'unit20-default',
+    tripped: false,
+    tripItems: {},
+    tripCause: '',
+    seq: 'Base Load',
+    _simT: 0,
+    init: function (mode) {
+      this.tags = {};
+      for (var k in H25_TAGS)
+        this.tags[k] =
+          typeof H25_TAGS[k] === 'object' ? H25_TAGS[k].v : H25_TAGS[k];
+      this.ctl = clone(initialCtl);
+      this.motors = {};
+      motorIds.forEach(function (id) {
+        this.motors[id] = {
+          run:
+            [
+              'mop1',
+              'mist2',
+              'hop2',
+              'ven1',
+              'ven2',
+              'bc1',
+              'bc2',
+              'evac1',
+              'gfc1',
+              'gfc3',
+            ].indexOf(id) >= 0,
+          auto: true,
+          standby: ['mop2', 'mist1', 'hop1', 'gfc2'].indexOf(id) >= 0,
+          stopLatch: false,
+        };
+      }, this);
+      this.tripped = false;
+      this.tripCause = '';
+      this.tripItems = {};
+      this.faults = { vib: false, exh: false, lube: false, fuel: false };
+      this.seq = 'Base Load';
+      this.recovering = false;
+      this.raiseLower = this.vRaiseLower = this.iRaiseLower = 0;
+      this._simT = 0;
+      this._startup = null;
+      this._delays = { vib: 0, fuel: 0, exh: 0 };
+      this._spreadSt = { t: 0, alarm: false };
       this.spreadAlarm = false;
-    }
-  },
-
-  /* ------------------------------------------------------------------ */
-  /* OVERS SPEED TEST (screen 19): faqat yuksiz, 52G ochiq holatda */
-  updateOverspeed: function (h) {
-    var T = this.tags;
-    if (!(this.ctl.osMainRun || this.ctl.osBackupRun)) return;
-    if (this.tripped || this.ctl.brk52G) return;
-    if ((+T["SPEED"] || 0) < 7000) return;
-    var target = 72.8 * (this._osRefPct || (this.ctl.osMainRun ? 110 : 111.2));
-    var sp = Math.min(target, (+T["SPEED"] || 0) + 12 * h);
-    T["SPEED"] = sp;
-    T["SPEED_PCT"] = sp / (this.NOMSPD / 100);
-    T["OS_TURB_SPEED"] = Math.round(sp);
-    T["OS_SPEED_REF"] = T["SPEED_PCT"];
-    if ((+T["OS_MAX_SPEED"] || 0) < sp) T["OS_MAX_SPEED"] = Math.round(sp);
-  },
-
-  /* ------------------------------------------------------------------ */
-  /* HIMOYALAR (Karta ustavok GTU-2,3 2025) */
-  _held: function (key, cond, delay, h) {
-    var d = this._delays[key];
-    if (!d) d = this._delays[key] = { t: 0 };
-    d.t = cond ? d.t + h : 0;
-    return d.t >= delay;
-  },
-
-  protections: function (h) {
-    if (this.tripped) return;
-    var T = this.tags, PR = H25_CFG.PROT;
-    var sp = +T["SPEED"] || 0;
-    var spin = sp > 500 || this._flame;
-
-    /* 12H / 12H_P overspeed */
-    if (!this.ctl.osBackupRun && sp >= 72.8 * PR.overSpeedPct) {
-      this.trip("MAIN OVERSPEED TRIP", "12H"); return;
-    }
-    if (this.ctl.osBackupRun && sp >= 72.8 * PR.overSpeed2Pct) {
-      this.trip("BACKUP OVERSPEED TRIP", "12H_P"); return;
-    }
-
-    /* 39VTX high vibration, 3 s */
-    var mv = Math.max(+T["VIB_2BX"] || 0, +T["VIB_2BY"] || 0,
-                      +T["VIB_1BX"] || 0, +T["VIB_1BY"] || 0,
-                      +T["VIB_EEBX"] || 0, +T["VIB_EEBY"] || 0,
-                      +T["VIB_TEBX"] || 0, +T["VIB_TEBY"] || 0);
-    if (this._held("vib", spin && mv >= PR.vibTrip, PR.vibDelayS, h)) {
-      this.trip("HIGH VIBRATION TRIP", "39VTX"); return;
-    }
-
-    /* 63QTX lube oil pressure low, 3 s */
-    if (this._held("lubep", spin && (+T["LO_HDR_P"] || 0) <= PR.lubePTrip, PR.lubePDelayS, h)) {
-      this.trip("LUBE OIL PRESS LOW", "63QTX"); return;
-    }
-    /* 26QT lube oil header temperature high, 3 s */
-    if (this._held("lubet", spin && (+T["LUBE_HDR_T"] || 0) >= PR.lubeTTrip, 3, h)) {
-      this.trip("LUBE OIL HEADER TEMP HIGH", "26QT"); return;
-    }
-    /* 63FGLT fuel gas supply pressure low, 15 s */
-    if (this._held("fuelp", spin && (+T["P1_PRESS"] || 0) <= PR.fuelPTrip, PR.fuelPDelayS, h)) {
-      this.trip("FUEL GAS SUPPLY PRESS LOW", "63FGLT"); return;
-    }
-    /* 63HQLT hydraulic supply pressure low, 2 s */
-    if (this._held("hyd", spin && (+T["HYD_OIL_P"] || 0) <= PR.hydTrip, PR.hydDelayS, h)) {
-      this.trip("HYDRAULIC SUPPLY PRESS LOW", "63HQLT"); return;
-    }
-
-    /* 66TXT exhaust overtemperature: EXH_REF + 22, 3 s, faqat o'sishda */
-    var eNow = +T["EXH_T"] || 0, eRef = (+T["EXH_REF_T"] || 350) + PR.exhTripMargin;
-    var rising = (this._prevExh == null) || (eNow >= this._prevExh - 0.5);
-    this._prevExh = eNow;
-    if (this._held("exh", this.running() && eNow >= eRef && rising, PR.exhDelayS, h)) {
-      this.trip("EXHAUST OVERTEMP TRIP", "66TXT"); return;
-    }
-
-    /* 26DT loss of flame: yuk ostida olov bor, EXH juda past, 3 s */
-    if (this._held("flame", this.running() && eNow < PR.flameLossExhC, PR.flameLossDelayS, h)) {
-      this.trip("LOSS OF FLAME TRIP", "26DT"); return;
-    }
-  },
-
-  /* ------------------------------------------------------------------ */
-  /* HOLAT MATNI / DISPLEYLAR */
-  updateFfdStatus: function () {
-    var s = this.seq;
-    if (s === "Cranking" || s === "Purge") this.ctl.ffdStatus = "FFDN";
-    else if (s === "GT Firing" || s === "Warming up") this.ctl.ffdStatus = "FFDSU";
-    else if (s === "Accelerating") this.ctl.ffdStatus = "FFDAOC";
-    else if (s === "Loading" || s === "Part Load") this.ctl.ffdStatus = "FFDNLL";
-    else if (s === "Base Load") this.ctl.ffdStatus = "FFDT";
-    else this.ctl.ffdStatus = "FFDSD";
-  },
-
-  updateDerived: function (h) {
-    var T = this.tags;
-    var P = Math.max(0, +T["GEN_POWER"] || 0);
-    var sp = +T["SPEED"] || 0;
-    var ratio = this.clamp(sp / this.NOMSPD, 0, 1);
-
-    T["MW_FDBK"] = P;
-    T["MW_REF"] = this.setpointPower() + 0.9;
-
-    /* tezlik buyrug'i (SPEED REF): sekvensiya fazasiga mos */
-    var sref = 0;
-    if (this.seq === "Cranking" || this.seq === "Purge" ||
-        this.seq === "GT Firing" || this.seq === "Warming up") sref = 20;
-    else if (this.seq === "Accelerating") sref = sp / (this.NOMSPD / 100);
-    else if (this.seq === "Seq. Complete" || this.seq === "Loading" ||
-             this.seq === "Base Load" || this.seq === "Part Load") sref = 100;
-    T["SPEED_REF"] = sref;
-
-    var igvTgt;
-    if (sp < 3000) igvTgt = 34;
-    else if (!this.running()) igvTgt = 34 + 20 * ratio;
-    else igvTgt = 54 + Math.min(28.6, P);
-    this.lag("IGV_POS", igvTgt, 5, h);
-
-    var refTgt = 350 + 245.8 * Math.sqrt(Math.min(1, P / 28.6));
-    this.lag("EXH_REF_T", refTgt, 10, h);
-
-    this.lag("IBH_POS", -0.1, 5, h);
-    T["IBH_REF"] = Math.max(0, +T["IBH_POS"] || 0);
-    T["IBH_FDBK"] = +T["IBH_POS"] || 0;
-    T["PURGE_FINAL"] = H25_CFG.SEQ.purgeMin;
-
-    /* data-report ko'zgulari */
-    T["TB_SPEED"] = Math.round(sp);
-    T["CS019"] = Math.round(sp);
-    T["ACT_P1"] = P;
-    T["ACT_P2"] = Math.max(0, P - 0.29);
-    T["REACT_P"] = (+T["GEN_MVAR"] || 0) + 0.6;
-    T["GEN_V_DR"] = T["GEN_KV"];
-    T["GEN_C_DR"] = T["GEN_A"];
-    T["FLD_V"] = T["EXC_V"];
-    T["FLD_C"] = T["EXC_A"];
-    T["TX_MED"] = T["EXH_T"];
-    T["IGV_REF"] = (+T["IGV_POS"] || 0) - 0.2;
-    T["MBA_CT02"] = T["CPR_OUT_T"];
-    T["BA10_T2B"] = T["CPR_OUT_T"];
-    T["BL30_P01"] = T["IBH_IN_P"];
-    T["BL30_P02"] = T["IBH_OUT_P"];
-    T["BL30_T03"] = T["IBH_OUT_T"];
-    T["OS_EXH_T"] = T["EXH_T"];
-    T["OS_TURB_SPEED"] = Math.round(sp);
-    T["OS_SPEED_REF"] = T["SPEED_PCT"];
-    T["LO_HDR_P2"] = (+T["LO_HDR_P"] || 0) + 0.001;
-
-    var mv = Math.max(+T["VIB_2BX"] || 0, +T["VIB_2BY"] || 0,
-                      +T["VIB_1BX"] || 0, +T["VIB_1BY"] || 0,
-                      +T["VIB_EEBX"] || 0, +T["VIB_EEBY"] || 0,
-                      +T["VIB_TEBX"] || 0, +T["VIB_TEBY"] || 0);
-    T["MAX_VIB"] = mv;
-    if (mv > (+T["OS_MAX_VIB"] || 0)) T["OS_MAX_VIB"] = mv;
-
-    /* wheelspace nuqtalari issiqlik bilan kichrayadi */
-    var wr = this._wheel / 499.9;
-    var wsTags = ["WS1A", "WS1B", "WS1C", "WS1D", "WS2A", "WS2B", "WS2C", "WS2D",
-                  "WS3A", "WS3B", "WS3C", "WS3D"];
-    for (var i = 0; i < wsTags.length; i++) {
-      T[wsTags[i]] = Math.round(H25_TAGS[wsTags[i]].v * wr);
-    }
-    var mb = ["MBA20_A1", "MBA20_B1", "MBA20_A2", "MBA20_B2", "MBA20_A3", "MBA20_B3",
-              "MBA20_A4", "MBA20_B4", "MBA20_A5", "MBA20_B5", "MBA20_A6", "MBA20_B6"];
-    for (var k = 0; k < mb.length; k++) {
-      T[mb[k]] = Math.round(H25_TAGS[mb[k]].v * wr);
-    }
-  },
-
-  /* ------------------------------------------------------------------ */
-  push: function () {
-    if (typeof document === "undefined" || !document.querySelectorAll) return;
-    var els = document.querySelectorAll("[data-tag]");
-    for (var i = 0; i < els.length; i++) {
-      var el = els[i], k = el.getAttribute("data-tag");
-      if (!(k in this.tags)) continue;
-      var v = this.tags[k];
-      if (typeof v === "string") { el.textContent = v; continue; }
-      if (!isFinite(v)) v = 0;
-      var def = H25_TAGS[k] || {};
-      var dp = el.getAttribute("data-dp");
-      dp = (dp === null) ? (def.dp || 0) : parseInt(dp, 10);
-      el.textContent = (+v).toFixed(dp);
-    }
-  },
-
-  refreshUI: function () {
-    try { if (typeof refreshButtons === "function") refreshButtons(); } catch (e) {}
-    try { if (typeof refreshCustom === "function") refreshCustom(); } catch (e) {}
-  },
-
-  /* ------------------------------------------------------------------ */
-  /* OPERATOR BUYRUQLARI */
-  press: function (group, value) {
-    switch (group) {
-      case "location": this.ctl.location = value; break;
-      case "cooldown": this.ctl.cooldown = value; break;
-      case "governor": this.ctl.governor = value; break;
-      case "masterMode":
+      this.voltageSet = 10.92;
+      this.reactiveSet = 4.3;
+      this.sync = { df: 0, dvPct: 0, dphi: 0 };
+      this.kuInput = null;
+      this.events = [];
+      this.lastReset = 0;
+      this.paused = false;
+      this.tcGas = [];
+      this.tcMetal = [];
+      this.tcBias = [];
+      this.tcPh1 = [];
+      this.tcPh2 = [];
+      var rng = H25_RNG(H25_CFG.TC.seed);
+      for (var i = 1; i <= 18; i++) {
+        var v = this.tags[this.tcTag(i)];
+        this.tcGas.push(v);
+        this.tcMetal.push(v);
+        this.tcBias.push(0);
+        this.tcPh1.push(rng() * 6.28);
+        this.tcPh2.push(rng() * 6.28);
+      }
+      if (mode === 'cold') {
+        this.seq = 'Ready to Start';
+        this.ctl.master = 'STOP';
+        this.ctl.brk52G = false;
+        this.ctl.field41 = false;
+        [
+          'SPEED',
+          'SPEED_PCT',
+          'GEN_POWER',
+          'GEN_A',
+          'GEN_MVAR',
+          'GEN_KV',
+          'GEN_HZ',
+          'FOFFD',
+          'FUEL_FLOW',
+          'SRV_POS',
+          'F1_GCV',
+          'F2_1_GCV',
+          'F2_2_GCV',
+          'F2_3_GCV',
+          'F2_4_GCV',
+        ].forEach(function (k) {
+          this.tags[k] = 0;
+        }, this);
+        this.tags.IGV_POS = 34;
+        this.tcGas = this.tcGas.map(function () {
+          return 25;
+        });
+        this.tcMetal = this.tcMetal.map(function () {
+          return 25;
+        });
+      }
+      this.updateTC(0, 'hold', 595);
+      this.recomputeExhaust(0);
+      this.derive();
+      this.log(
+        'SCENARIO',
+        mode === 'cold'
+          ? 'Cold / stopped initial state'
+          : 'Base-load demonstration',
+      );
+      this.push();
+    },
+    resetScenario: function (mode) {
+      this.init(mode || 'cold');
+      this.publish();
+    },
+    log: function (type, message) {
+      this.events.unshift({ t: this._simT, type: type, message: message });
+      if (this.events.length > 200) this.events.length = 200;
+    },
+    onTick: function (fn) {
+      this.listeners.push(fn);
+      return function () {
+        var i = this.listeners.indexOf(fn);
+        if (i >= 0) this.listeners.splice(i, 1);
+      }.bind(this);
+    },
+    publish: function () {
+      for (var i = 0; i < this.listeners.length; i++)
+        this.listeners[i](this.tags);
+    },
+    baseOf: function (k) {
+      return H25_TAGS[k].v;
+    },
+    tcTag: function (i) {
+      return 'TC' + String(i).padStart(2, '0');
+    },
+    running: function () {
+      return (
+        !this.tripped &&
+        ['Base Load', 'Part Load', 'Loading', 'Unloading'].indexOf(this.seq) >=
+          0
+      );
+    },
+    flameOn: function () {
+      return (
+        !this.tripped &&
+        [
+          'GT Firing',
+          'Warming up',
+          'Accelerating',
+          'Seq. Complete',
+          'Loading',
+          'Base Load',
+          'Part Load',
+          'Unloading',
+        ].indexOf(this.seq) >= 0
+      );
+    },
+    updateTC: function (dt, mode, target) {
+      var C = H25_CFG.TC,
+        meanRef = 0;
+      for (var j = 1; j <= 18; j++) meanRef += H25_TAGS[this.tcTag(j)].v / 18;
+      for (var i = 0; i < 18; i++) {
+        var tgt =
+          mode === 'run'
+            ? target + H25_TAGS[this.tcTag(i + 1)].v - meanRef
+            : 25;
+        var r =
+          mode === 'hold'
+            ? [
+                this.tcGas[i],
+                this.tcMetal[i],
+                (1 - C.metalW) * this.tcGas[i] + C.metalW * this.tcMetal[i],
+              ]
+            : H25_EXM.tcStep(
+                this.tcGas[i],
+                this.tcMetal[i],
+                tgt,
+                mode === 'run' ? C.tauRun : C.tauGasCool,
+                mode === 'run' ? C.tauMetalRun : C.tauMetalCool,
+                dt,
+                C.metalW,
+              );
+        this.tcGas[i] = r[0];
+        this.tcMetal[i] = r[1];
+        this.tags[this.tcTag(i + 1)] = r[2];
+      }
+    },
+    recomputeExhaust: function (dt) {
+      var a = [];
+      for (var i = 1; i <= 18; i++) a.push(this.tags[this.tcTag(i)]);
+      var T = this.tags,
+        sp = H25_EXM.exSpreads(a);
+      T.EXH_T = H25_EXM.exTempMean(a);
+      T.SPREAD_1 = sp.s1;
+      T.SPREAD_2 = sp.s2;
+      T.SPREAD_3 = T.EXH_SPREAD_3 = sp.s3;
+      T.ALLOW_SPREAD = H25_EXM.allowSpread(T.GEN_POWER || 0);
+      for (i = 1; i <= 18; i++) T['CT' + String(i).padStart(2, '0')] = a[i - 1];
+      if (this.flameOn()) {
+        var status = H25_EXM.spreadStep(
+          this._spreadSt,
+          sp.s1,
+          T.ALLOW_SPREAD,
+          dt,
+          H25_CFG.EXH,
+        );
+        this.spreadAlarm = status !== 'ok';
+        if (status === 'trip') this.trip('HIGH EXHAUST SPREAD', '30SPT');
+      } else {
+        this._spreadSt = { t: 0, alarm: false };
+        this.spreadAlarm = false;
+      }
+    },
+    derive: function () {
+      var T = this.tags,
+        online = this.ctl.brk52G && !this.tripped && this.flameOn();
+      if (!online) T.GEN_POWER = 0;
+      T.GEN_POWER = Math.max(0, T.GEN_POWER || 0);
+      T.MW_FDBK = T.GEN_POWER;
+      T.SPEED_PCT = T.SPEED / 72.8;
+      T.GEN_HZ = (50 * T.SPEED) / 7280;
+      T.GEN_MVAR = online ? T.GEN_MVAR || 0 : 0;
+      var apparent = Math.hypot(T.GEN_POWER, T.GEN_MVAR);
+      T.GEN_A =
+        online && T.GEN_KV > 0
+          ? (apparent * 1000) / (Math.sqrt(3) * T.GEN_KV)
+          : 0;
+      T.GEN_PF = apparent > 0 ? T.GEN_POWER / apparent : 1;
+      T.EXC_V = this.ctl.field41 ? (46 * T.GEN_KV) / 10.92 : 0;
+      T.EXC_A = this.ctl.field41 ? 5.6 * (0.5 + Math.abs(T.GEN_MVAR) / 8.6) : 0;
+      T.TB_SPEED = T.CS019 = T.OS_TURB_SPEED = T.SPEED;
+      T.OS_SPEED_REF = T.SPEED_PCT;
+      T.OS_MAX_SPEED = Math.max(T.OS_MAX_SPEED || 0, T.SPEED);
+      T.OS_MAX_VIB = Math.max(T.OS_MAX_VIB || 0, T.VIB_2BX || 0);
+      T.MW_REF = (T.LOAD_SET * 28.6) / 30;
+      T.FUEL_GAS_P = T.P1_PRESS;
+      T.SPEED_REF = 100;
+      T.GAS_FLOW = T.FUEL_FLOW;
+      T.ACT_P1 = T.GEN_POWER;
+      T.ACT_P2 = Math.max(0, T.GEN_POWER - 0.29);
+      T.REACT_P = T.GEN_MVAR;
+      T.GEN_V_DR = T.GEN_KV;
+      T.GEN_C_DR = T.GEN_A;
+      T.FLD_V = T.EXC_V;
+      T.FLD_C = T.EXC_A;
+      T.TX_MED = T.OS_EXH_T = T.EXH_T;
+      T.MAX_VIB = Math.max(T.VIB_2BX || 0, T.VIB_2BY || 0);
+      T.IGV_REF = T.IGV_POS;
+      T.MBA_CT02 = T.BA10_T2B = T.CPR_OUT_T;
+      T.BL30_P01 = T.IBH_IN_P;
+      T.BL30_P02 = T.IBH_OUT_P;
+      T.BL30_T03 = T.IBH_OUT_T;
+      this.ctl.gtStatus = this.seq;
+    },
+    tick: function (dtMs) {
+      if (this.paused) return;
+      var dt = (dtMs == null ? H25_CFG.TICK_MS : dtMs) / 1000;
+      if (!(dt > 0) || dt > 5) return;
+      this._simT += dt;
+      this._lastDt = dt;
+      var T = this.tags,
+        self = this;
+      function lag(k, target, tau) {
+        T[k] = H25_EXM.lagStep(Number(T[k]) || 0, target, tau, dt);
+      }
+      if (this._startup && !this.tripped) this.advanceStartup(dt);
+      if (this.running())
+        T.LOAD_SET = clamp(T.LOAD_SET + this.raiseLower * 0.2 * dt, 0, 32);
+      this.voltageSet = clamp(
+        this.voltageSet + this.vRaiseLower * 0.02 * dt,
+        10,
+        11.5,
+      );
+      this.reactiveSet = clamp(
+        this.reactiveSet + this.iRaiseLower * 0.1 * dt,
+        -8,
+        8,
+      );
+      var back = (this.kuInput && this.kuInput.backP) || 0;
+      if (this.running() && !this._startup) {
+        var targetPower = Math.max(0, (T.LOAD_SET * 28.6) / 30);
+        if (this.kuInput && this.kuInput.boilerTrip)
+          targetPower = Math.min(5, targetPower);
+        var d = T.LOAD_SET - 30,
+          fuelTarget = clamp(65.2 + d * 1.5, 9.8, 100);
+        T.FFD_MIN = 9.8;
+        T.FFD_SU = 100;
+        T.FFD_SD = 100;
+        T.FFD_ACC = clamp(73 + d * 0.8, 9.8, 100);
+        T.FFD_SPD = clamp(77.8 + d * 1.2, 9.8, 100);
+        T.FFD_LLM = clamp(65.7 + d * 1.5, 9.8, 100);
+        T.FFD_TEMP = clamp(
+          64 + d * 1.5 - Math.max(0, T.EXH_T - 595) * 0.15,
+          9.8,
+          100,
+        );
+        fuelTarget = Math.min(
+          fuelTarget,
+          this.ctl.governor === 'LLM' ? T.FFD_LLM : T.FFD_SPD,
+        );
+        T.EXH_REF_T = H25_EXM.lagStep(
+          T.EXH_REF_T || 595.8,
+          595.8 + d * 3,
+          5,
+          dt,
+        );
+        var runback = Math.max(0, T.EXH_T - T.EXH_REF_T - 11);
+        fuelTarget = Math.max(9.8, fuelTarget - runback * 0.8);
+        targetPower *= clamp(fuelTarget / Math.max(9.8, 65.2 + d * 1.5), 0, 1);
+        if (this.faults.fuel) targetPower *= clamp(T.P1_PRESS / 3.579, 0, 1);
+        lag('GEN_POWER', this.ctl.brk52G ? targetPower : 0, 2.5);
+        lag('FOFFD', fuelTarget, 2);
+        lag('SPEED', 7280, 1);
+        lag('IGV_POS', clamp(82.6 + d * 0.4, 34, 85), 2);
+        lag(
+          'FUEL_FLOW',
+          this.faults.fuel ? 0 : Math.max(0, 6626 + d * 220),
+          this.faults.fuel ? 2 : 3,
+        );
+        lag('P1_PRESS', this.faults.fuel ? 0 : 3.579, this.faults.fuel ? 2 : 2);
+        lag('P2_PRESS', Math.max(0, 2.49 + d * 0.05), 2);
+      } else if (!this._startup && !this.flameOn()) {
+        T.SPEED = Math.max(0, T.SPEED - 360 * dt);
+        lag('FOFFD', 0, 1);
+        lag('FUEL_FLOW', 0, 0.5);
+        if (T.SPEED === 0 && !this.tripped) this.seq = 'Ready to Start';
+      }
+      if (!this.faults.fuel) lag('P1_PRESS', 3.579, 2);
+      if (this.ctl.osMainRun || this.ctl.osBackupRun) {
+        if (!this._osSpeed) this._osSpeed = T.SPEED;
+        this._osSpeed += 180 * dt;
+        T.SPEED = this._osSpeed;
+        if (T.SPEED >= (this.ctl.osMainRun ? 8006 : 8079))
+          this.trip(
+            this.ctl.osMainRun
+              ? 'MAIN OVERSPEED TRIP'
+              : 'BACKUP OVERSPEED TRIP',
+            this.ctl.osMainRun ? '12H' : '12H_P',
+          );
+      }
+      var fl = this.flameOn(),
+        fuel = fl ? T.FOFFD : 0;
+      T.SRV_POS = H25_EXM.lagStep(
+        T.SRV_POS || 0,
+        fl ? clamp(fuel * 0.433, 0, 100) : 0,
+        1,
+        dt,
+      );
+      ['F1_GCV', 'F2_1_GCV', 'F2_2_GCV', 'F2_3_GCV', 'F2_4_GCV'].forEach(
+        function (k, i) {
+          // F2-4 switching follows the live KD4H setting, not a duplicated constant.
+          var threshold = i === 4 ? T.KD4H : [0, 0, 36.3, 44.8][i];
+          lag(
+            k,
+            fl && fuel >= threshold
+              ? clamp(fuel * (i ? 0.715 : 0.374), 0, 100)
+              : 0,
+            1,
+          );
+        },
+      );
+      if (!fl) {
+        T.FUEL_FLOW = Math.max(0, T.FUEL_FLOW);
+        if (this.tripped) T.FUEL_FLOW = 0;
+      }
+      T.LO_HDR_P = this.faults.lube
+        ? Math.max(0, (T.LO_HDR_P || 0) - 0.04 * dt)
+        : this.motors.mop1.run || this.motors.mop2.run
+          ? 0.172
+          : this.motors.eop.run
+            ? 0.12
+            : 0;
+      T.LO_HDR_P2 = T.LO_HDR_P + 0.001;
+      T.MOP_DISCH = T.LO_HDR_P * 3.2;
+      T.HYD_OIL_P = this.motors.hop1.run || this.motors.hop2.run ? 9.59 : 0;
+      [
+        'VIB_1BX',
+        'VIB_1BY',
+        'VIB_EEBX',
+        'VIB_EEBY',
+        'VIB_TEBX',
+        'VIB_TEBY',
+      ].forEach(function (k) {
+        T[k] = H25_TAGS[k].v * clamp(T.SPEED / 7280, 0, 1.2);
+      });
+      if (this.faults.vib && fl) {
+        T.VIB_2BX = Math.min(200, T.VIB_2BX + 12 * dt);
+        T.VIB_2BY = Math.min(200, T.VIB_2BY + 8 * dt);
+      } else if (!this.faults.vib) {
+        lag('VIB_2BX', fl ? 61.6 : 0, 3);
+        lag('VIB_2BY', fl ? 41.1 : 0, 3);
+      }
+      var ratio = clamp(T.SPEED / 7280, 0, 1.12);
+      T.GEN_KV = this.ctl.field41 ? this.voltageSet * clamp(ratio, 0, 1) : 0;
+      lag('GEN_MVAR', this.ctl.brk52G ? this.reactiveSet : 0, 2);
+      T.CPR_OUT_P = 1.3 * ratio;
+      T.CPR_OUT_T = 25 + (408.6 - 25) * ratio;
+      var targetT = this._startup
+        ? this._startup.exh
+        : 595 + (T.LOAD_SET - 30) * 5.5;
+      if (this.faults.exh && fl) targetT += 150;
+      targetT += clamp(back, -20, 20) * 0.1;
+      this.updateTC(dt, fl ? 'run' : 'cool', targetT);
+      this.recomputeExhaust(dt);
+      function delay(name, condition, seconds, cause, item) {
+        self._delays[name] = condition ? (self._delays[name] || 0) + dt : 0;
+        if (self._delays[name] >= seconds) self.trip(cause, item);
+      }
+      if (fl && !this.tripped) {
+        delay('vib', T.VIB_2BX >= 155, 3, 'HIGH VIBRATION TRIP', '39VTX');
+        delay(
+          'fuel',
+          T.P1_PRESS <= 2.38,
+          15,
+          'FUEL GAS SUPPLY PRESS LOW',
+          '63FGLT',
+        );
+        delay(
+          'exh',
+          T.EXH_T > (T.EXH_REF_T || 595.8) + 22,
+          3,
+          'EXHAUST OVERTEMP TRIP',
+          '66TXT',
+        );
+      }
+      if (!this.tripped && T.SPEED > 500 && T.LO_HDR_P < 0.059)
+        this.trip('LUBE OIL PRESS LOW', '63QTX');
+      if (!this.tripped && T.SPEED > 500 && T.HYD_OIL_P < 1)
+        this.trip('HYDRAULIC PRESSURE LOW', '63HQLT');
+      this.derive();
+      T.GEN_MWH = (T.GEN_MWH ?? 0) + (T.GEN_POWER * dt) / 3600;
+      if (this.flameOn())
+        ['EOH_L', 'EOH_R', 'AOH_L', 'AOH_R', 'GAS_L', 'GAS_R'].forEach(
+          function (k) {
+            T[k] = (T[k] ?? 0) + dt / 3600;
+          },
+        );
+      this.push();
+      this.publish();
+    },
+    push: function () {
+      if (typeof document === 'undefined') return;
+      var els = document.querySelectorAll('[data-tag]');
+      for (var i = 0; i < els.length; i++) {
+        var el = els[i],
+          k = el.getAttribute('data-tag'),
+          v = this.tags[k];
+        if (v == null) continue;
+        var d = H25_TAGS[k];
+        var dp = el.getAttribute('data-dp');
+        el.textContent =
+          typeof v === 'string'
+            ? v
+            : Number.isFinite(v)
+              ? v.toFixed(dp === null ? (d?.dp ?? 1) : Number(dp))
+              : 'BAD';
+      }
+    },
+    startReasons: function () {
+      var r = [];
+      if (this.tripped) r.push('Trip latched');
+      if (this.tags.SPEED >= 50) r.push('Rotor not stopped');
+      if (this.ctl.brk52G) r.push('52G closed');
+      if (this.ctl.masterMode !== 'AUTO') r.push('Select AUTO');
+      if (!(this.motors.mop1.run || this.motors.mop2.run))
+        r.push('Main lube pump stopped');
+      if (!(this.motors.ven1.run || this.motors.ven2.run))
+        r.push('Ventilation stopped');
+      if (!(this.motors.hop1.run || this.motors.hop2.run))
+        r.push('Hydraulic pump stopped');
+      if (Object.values(this.faults).some(Boolean))
+        r.push('Active instructor fault');
+      return r;
+    },
+    startCheckOk: function () {
+      return this.startReasons().length === 0;
+    },
+    runStartupSeq: function () {
+      if (!this.startCheckOk()) {
+        this.log('REJECT', this.startReasons().join('; '));
+        return false;
+      }
+      this._startup = { index: 0, t: 0, exh: 25 };
+      this.seq = steps[0][0];
+      this.ctl.master = 'START';
+      this.bumpStarts();
+      this.log('START', 'Automatic training sequence (accelerated timing)');
+      return true;
+    },
+    advanceStartup: function (dt) {
+      var s = this._startup;
+      if (!s) return;
+      s.t += dt;
+      if (s.t >= steps[s.index][1]) {
+        s.t -= steps[s.index][1];
+        s.index++;
+        if (s.index >= steps.length) {
+          this._startup = null;
+          this.seq = 'Base Load';
+          this.log('SEQUENCE', 'Loading complete');
+          return;
+        }
+        this.seq = steps[s.index][0];
+        this.log('SEQUENCE', this.seq);
+      }
+      var f = clamp(s.t / steps[s.index][1], 0, 1),
+        T = this.tags;
+      var ranges = [
+          [0, 700],
+          [700, 700],
+          [700, 700],
+          [700, 4800],
+          [4800, 7280],
+          [7280, 7280],
+          [7280, 7280],
+        ],
+        a = ranges[s.index];
+      T.SPEED = a[0] + (a[1] - a[0]) * f;
+      s.exh = [25, 25, 280, 460, 595, 595, 595][s.index];
+      T.FOFFD = s.index < 2 ? 0 : 20 + 45 * clamp((s.index - 2 + f) / 4, 0, 1);
+      T.FUEL_FLOW = s.index < 2 ? 0 : T.FOFFD * 100;
+      if (s.index >= 4) this.ctl.field41 = true;
+      if (s.index >= 6 && !this.ctl.brk52G) {
+        if (!this.syncReady()) {
+          this._startup = null;
+          this.seq = 'Seq. Complete';
+          this.log(
+            'INHIBIT',
+            'Synchronism check failed; close 52G only when permitted',
+          );
+          return;
+        }
+        this.ctl.brk52G = true;
+      }
+      T.GEN_POWER = s.index === 6 ? ((T.LOAD_SET * 28.6) / 30) * f : 0;
+    },
+    press: function (group, value) {
+      if (group === 'master') {
+        if (value === 'START') this.runStartupSeq();
+        else {
+          this._startup = null;
+          this._osSpeed = 0;
+          this.ctl.osMainRun = this.ctl.osBackupRun = false;
+          this.ctl.master = 'STOP';
+          this.ctl.brk52G = false;
+          this.seq = this.tags.SPEED > 0 ? 'Coast Down' : 'Ready to Start';
+          this.log('STOP', 'Sequence cancelled; fuel isolated');
+          this.derive();
+        }
+      } else if (group === 'gtStatus') {
+        this.log('REJECT', 'Status is read-only');
+        return;
+      } else if (group === 'masterMode') {
+        if (value === 'OFF') this.press('master', 'STOP');
         this.ctl.masterMode = value;
-        if (value === "OFF" && this.spinning()) this.stopSeq();
-        break;
-      case "master":
-        this.ctl.master = value;
-        if (value === "START") this.startSeq();
-        else if (value === "STOP") this.stopSeq();
-        break;
-      case "speedMode": this.ctl.speedMode = value; break;
-      case "loadMode":
-        this.ctl.loadMode = value;
-        if (value === "BASE") this.tags["LOAD_SET"] = 30.0;
-        break;
-      case "s43L": this.ctl.s43L = value; break;
-      case "s43G": this.ctl.s43G = value; break;
-      case "s43OPE": this.ctl.s43OPE = value; break;
-      case "avrMode": this.ctl.avrMode = value; break;
-      case "fieldMode": this.ctl.fieldMode = value; break;
-      case "pss": this.ctl.pss = value; break;
-      /* gtStatus / ffdStatus — FAQAT o'qish uchun (real DIASYS displeyi) */
-    }
-    this.refreshUI();
-  },
-
-  canStart: function () {
-    return !this.tripped && this.seq === "Ready to Start" &&
-      (+this.tags["SPEED"] || 0) < 50 && !this._flame;
-  },
-
-  startSeq: function () {
-    if (!this.canStart()) return false;
-    var T = this.tags;
-    this.ctl.master = "START";
-    this.ctl.brk52G = false;
-    this.ctl.field41 = true;
-    this._loadT = 0;
-    this._dphi = 0;
-    this._exhFault = 0;
-    this._vibRamp = 0;
-    this._delays = {};
-    this._spreadSt = { t: 0, alarm: false };
-    T["SPEED"] = 0; T["SPEED_PCT"] = 0;
-    T["GEN_POWER"] = 0; T["MW_FDBK"] = 0;
-    T["FOFFD"] = 0; T["IGV_POS"] = 34;
-    T["PURGE_CURRENT"] = 0;
-    T["GEN_MVAR"] = 0;
-    T["SYNC_DPHI"] = 0;
-    /* sovuq yonish yo'li: gaz+metall atrof-muhitda */
-    for (var i = 0; i < 18; i++) {
-      var v = 25 + (H25_TAGS[this.tcTag(i + 1)].v - 595.0) * 0.03;
-      this.tcGas[i] = v;
-      this.tcMetal[i] = v;
-    }
-    this._wheel = 60;
-    this.motors.mop1.run = true;
-    this.motors.mop1.stopLatch = false;
-    this.bumpStarts();
-    this.setSeq("Cranking");
-    this.refreshUI();
-    return true;
-  },
-
-  stopSeq: function () {
-    this.ctl.master = "STOP";
-    if (this.running()) this.setSeq("Unloading");
-    else if (this.seq === "Seq. Complete" || this.seq === "Accelerating" ||
-             this.seq === "Warming up" || this.seq === "GT Firing" ||
-             this.seq === "Purge" || this.seq === "Cranking") {
-      this.setSeq("Fired Shutdown");
-    } else if ((+this.tags["SPEED"] || 0) > 100) this.setSeq("Coast Down");
-    else if (this.seq !== "Cooling Down" && this.seq !== "Ready to Start") this.setSeq("Cooling Down");
-    this.refreshUI();
-  },
-
-  release52G: function () {
-    if (this.tripped || this.ctl.brk52G) return;
-    if (!this.syncOk()) return;
-    this.closeBreaker();
-  },
-
-  releaseIBH: function () { this.ctl.ibhLock = false; this.refreshUI(); },
-
-  /* ---- aux motor control (screen 9) ---- */
-  setMotorMode: function (id, auto) {
-    if (!this.motors[id]) return;
-    this.motors[id].auto = auto;
-    this.refreshUI();
-  },
-  motorStart: function (id) {
-    if (!this.motors[id]) return;
-    this.motors[id].run = true;
-    this.motors[id].stopLatch = false;
-    this.refreshUI();
-  },
-  motorStop: function (id) {
-    if (!this.motors[id]) return;
-    this.motors[id].run = false;
-    this.motors[id].stopLatch = true;
-    var pair = { mop1: "mop2", hop2: "hop1", mist2: "mist1" };
-    var sb = pair[id];
-    if (sb && this.motors[sb].auto && !this.motors[sb].run) {
-      this.motors[sb].run = true;
-      this.motors[sb].stopLatch = false;
-    }
-    if ((id === "gfc1" || id === "gfc3") && !this.motors.gfc1.run &&
-        !this.motors.gfc3.run && this.motors.gfc2.auto) {
-      this.motors.gfc2.run = true;
-      this.motors.gfc2.stopLatch = false;
-    }
-    this.refreshUI();
-  },
-  close41: function () { this.ctl.field41 = true; this.refreshUI(); },
-  open41: function () {
-    /* 52G yopiq bo'lganda qo'zg'atish uzgichi ochilmaydi (interlock) */
-    if (this.ctl.brk52G) return;
-    this.ctl.field41 = false;
-    this.refreshUI();
-  },
-
-  /* ---- screen 3 lampalar / uzgichlar ranglari ---- */
-  stateColor: function (id) {
-    var GRN = "rgb(0,255,0)", RED = "rgb(255,0,0)", GRY = "#808080";
-    switch (id) {
-      case "sync1": return this.ctl.field41 && (+this.tags["GEN_KV"] || 0) > 9 ? GRN : GRY;
-      case "sync2": return GRN;
-      case "sync3": return this.ctl.brk52G ? RED : GRN;
-      case "sync4": return this.syncOk() ? GRN : RED;
-      case "ready": return (this.ctl.brk52G && !this.tripped) ? "#FFFFFF" : GRY;
-      case "ibhlock": return this.ctl.ibhLock ? GRN : GRY;
-      case "sym52L": return RED;
-      case "sym52G": return this.ctl.brk52G ? RED : GRN;
-      case "sym41": return this.ctl.field41 ? RED : GRN;
-      default: return GRY;
-    }
-  },
-
-  /* ---- start-check permissive ranglari (real signallar) ---- */
-  scColor: function (id) {
-    var GRN = "rgb(0,200,0)", RED = "rgb(255,0,0)";
-    var T = this.tags, M = this.motors;
-    var sp = +T["SPEED"] || 0;
-    switch (id) {
-      case "zero": return sp < 100 ? GRN : RED;
-      case "brk": return !this.ctl.brk52G ? GRN : RED;
-      case "reset": return !this.tripped ? GRN : RED;
-      case "sc3_4t": return !this.tripped ? GRN : RED;
-      case "sc1_off": return this.ctl.masterMode !== "OFF" ? GRN : RED;
-      case "sc1_hd": return (!this.tripped && (M.hop1.run || M.hop2.run || sp < 100)) ? GRN : RED;
-      case "sc1_qn": return (+T["LO_TANK_T"] || 0) < 80 ? GRN : RED;
-      case "sc1_ql": return (+T["LO_TANK_L"] || 0) > 20 ? GRN : RED;
-      case "sc4_qe": return !M.eop.run ? GRN : RED;
-      case "sc4_qm": return (M.mop1.run || M.mop2.run) ? GRN : RED;
-      case "sc4_tb": return (M.ven1.run || M.ven2.run) ? GRN : RED;
-      case "sc5_cr": return !M.crank.stopLatch ? GRN : RED;
-      case "sc5_tg": return !M.tgm.stopLatch ? GRN : RED;
-      case "sc5_qe": return GRN;   /* EOP o'chirilgan bo'lsa ham ishga tayyor */
-      case "sc6_qm": return (!M.mop1.stopLatch || !M.mop2.stopLatch) ? GRN : RED;
-      case "sc6_qv": return (!M.mist1.stopLatch || !M.mist2.stopLatch) ? GRN : RED;
-      case "sc6_qt": return true;
-      case "sc6_hq": return (!M.hop1.stopLatch || !M.hop2.stopLatch) ? GRN : RED;
-      case "sc6_tb": return (M.ven1.run || M.ven2.run || M.ven1.auto || M.ven2.auto) ? GRN : RED;
-      case "sc6_bn": return (M.bc1.run || M.bc2.run || M.bc1.auto) ? GRN : RED;
-      case "sc7_jop": return !M.jop.stopLatch ? GRN : RED;
-      case "sc7_ng": return true;
-      case "sc7_gfc": return (!M.gfc1.stopLatch || !M.gfc2.stopLatch || !M.gfc3.stopLatch) ? GRN : RED;
-      default: return GRN;
-    }
-  },
-
-  startCheckIds: ["sc0_bus", "sc0_tci", "sc0_igv", "sc0_cp", "zero", "sc1_qn", "sc1_ql",
-    "sc1_off", "sc1_hd", "brk", "sc2_cb", "reset", "sc2_fgn", "sc3_4t", "sc3_vd", "sc3_tflt",
-    "sc3_cps", "sc4_qe", "sc4_qm", "sc4_tb", "sc4_hs", "sc4_gax", "sc5_cr", "sc5_tg",
-    "sc5_qe", "sc6_qm", "sc6_qv", "sc6_qt", "sc6_hq", "sc6_tb", "sc6_bn", "sc7_jop",
-    "sc7_ng", "sc7_gfc", "sc_ps"],
-
-  startCheckOk: function () {
-    for (var i = 0; i < this.startCheckIds.length; i++) {
-      if (this.scColor(this.startCheckIds[i]) === "rgb(255,0,0)") return false;
-    }
-    return true;
-  },
-
-  /* ---- overspeed test (screen 19) ---- */
-  osEnable: function () { this.ctl.osTest = "ENABLE"; this.refreshUI(); },
-  osDisable: function () {
-    this.ctl.osTest = "DISABLE";
-    this.ctl.osMainRun = false;
-    this.ctl.osBackupRun = false;
-    this.refreshUI();
-  },
-  osStartMain: function () {
-    if (this.ctl.osTest !== "ENABLE" || this.tripped || this.ctl.brk52G) return;
-    if ((+this.tags["SPEED"] || 0) < 7000) return;
-    this.ctl.osMainRun = true;
-    this.ctl.osBackupRun = false;
-    this._osRefPct = 110;
-    this.refreshUI();
-  },
-  osAbortMain: function () { this.ctl.osMainRun = false; this.refreshUI(); },
-  osStartBackup: function () {
-    if (this.ctl.osTest !== "ENABLE" || this.tripped || this.ctl.brk52G) return;
-    if ((+this.tags["SPEED"] || 0) < 7000) return;
-    this.ctl.osBackupRun = true;
-    this.ctl.osMainRun = false;
-    this._osRefPct = 111.2;
-    this.refreshUI();
-  },
-  osAbortBackup: function () { this.ctl.osBackupRun = false; this.refreshUI(); },
-  liftCal: function (v) { this.ctl.lift = v; this.refreshUI(); },
-
-  /* ---- burners / flame ---- */
-  flameOn: function () { return this._flame; },
-  burnerOpen: function () {
-    var T = this.tags, fl = this._flame;
-    var g = function (k) { return (+T[k] || 0) < 5; };
-    return {
-      F1: !fl || g("F1_GCV"),
-      F21: !fl || g("F2_1_GCV"),
-      F22: !fl || g("F2_2_GCV"),
-      F23: !fl || g("F2_3_GCV"),
-      F24: !fl || g("F2_4_GCV")
-    };
-  },
-
-  /* ---- counterlar ---- */
-  bumpStarts: function () {
-    var T = this.tags;
-    T["TOT_ST"] = (+T["TOT_ST"] || 0) + 1;
-    T["TOT_ST_R"] = (+T["TOT_ST_R"] || 0) + 1;
-    T["FS_N"] = (+T["FS_N"] || 0) + 1;
-    T["FS_N_R"] = (+T["FS_N_R"] || 0) + 1;
-    this.push();
-  },
-
-  counterReset: function () {
-    var T = this.tags, d = new Date();
-    T["EOH_R"] = 0; T["AOH_R"] = 0; T["GAS_R"] = 0;
-    T["FS_N_R"] = 0; T["ET_NT_R"] = 0; T["TOT_ST_R"] = 0; T["TOT_ET_R"] = 0;
-    var p2 = function (n) { return (n < 10 ? "0" : "") + n; };
-    T["RST_DATE"] = String(d.getFullYear()).slice(2) + "/" + p2(d.getMonth() + 1) + "/" + p2(d.getDate());
-    T["RST_TIME"] = p2(d.getHours()) + ":" + p2(d.getMinutes()) + ":" + p2(d.getSeconds());
-    this.push();
-  },
-
-  /* ---- TRIP / MASTER RESET ---- */
-  trip: function (cause, item) {
-    if (this.tripped) return;
-    var T = this.tags;
-    this.tripped = true;
-    this.tripCause = cause || "MANUAL TRIP";
-    this.tripItems[item || "9EX"] = true;
-    this.ctl.brk52G = false;
-    this.ctl.osMainRun = false;
-    this.ctl.osBackupRun = false;
-    this._flame = false;
-    this._loadT = 0;
-    this._dphi = 0;
-    this._qSet = 0;
-    T["GEN_POWER"] = 0;
-    T["MW_FDBK"] = 0;
-    T["GEN_A"] = 0;
-    T["GEN_PF"] = 0;
-    T["ET_NT"] = (+T["ET_NT"] || 0) + 1;
-    T["ET_NT_R"] = (+T["ET_NT_R"] || 0) + 1;
-    T["TOT_ET"] = (+T["TOT_ET"] || 0) + 1;
-    T["TOT_ET_R"] = (+T["TOT_ET_R"] || 0) + 1;
-    this.setSeq("Fired Shutdown");
-    this.refreshUI();
-  },
-
-  /* Latch-only reset: unitni QAYTA ISHGA TUSHIRMAYDI, qiymatlarni
-   * baza holatiga SAKRATMAYDI. Sekvensiya o'z holatidan davom etadi. */
-  masterReset: function () {
-    var T = this.tags;
-    this.tripped = false;
-    this.tripCause = "";
-    this.tripItems = {};
-    this.faults = { vib: false, exh: false, lube: false, fuel: false, flame: false };
-    this._delays = {};
-    this._spreadSt = { t: 0, alarm: false };
-    this.spreadAlarm = false;
-    this._exhFault = 0;
-    this._vibRamp = 0;
-    this.lastReset = Date.now();
-    if (window.H25_polarHist) window.H25_polarHist = [];
-    /* statik bosimlar darhol tiklanadi (issiqlik/mexanika sekin qoladi) */
-    var mop = this.motors.mop1.run || this.motors.mop2.run;
-    T["LO_HDR_P"] = mop ? 0.172 : (this.motors.eop.run ? 0.115 : 0);
-    T["LO_HDR_P2"] = T["LO_HDR_P"] + 0.001;
-    T["MOP_DISCH"] = mop ? 0.550 : (this.motors.eop.run ? 0.400 : 0);
-    T["P1_PRESS"] = 3.579;
-    if (this.seq === "Cooling Down" && (+T["SPEED"] || 0) < 150 &&
-        this._wheel < (H25_CFG.SEQ.coolTargetC || 66)) this.setSeq("Ready to Start");
-    this.push();
-    this.refreshUI();
-  },
-
-  /* ---- trainer fault injection ---- */
-  setFault: function (name, on) {
-    if (name in this.faults) this.faults[name] = !!on;
-  },
-  clearFaults: function () {
-    this.faults = { vib: false, exh: false, lube: false, fuel: false, flame: false };
-  },
-
-  /* ---- real-time loop ---- */
-  startLoop: function () {
-    var self = this, last = performance.now();
-    setInterval(function () {
-      var now = performance.now();
-      var dt = now - last;
-      last = now;
-      if (!(dt > 0)) return;
-      if (dt > H25_CFG.MAX_DT_MS) dt = H25_CFG.MAX_DT_MS;
-      self.tick(dt);
-    }, H25_CFG.ACCUM_MS);
-  }
-};
+      } else if (group in this.ctl) {
+        this.ctl[group] = value;
+        if (group === 'loadMode' && value === 'BASE') this.tags.LOAD_SET = 30;
+      }
+      this.derive();
+      this.push();
+      this.publish();
+    },
+    trip: function (cause, item) {
+      if (item) this.tripItems[item] = true;
+      if (this.tripped) return;
+      this.tripped = true;
+      this.tripCause = cause || 'MANUAL TRIP';
+      this._startup = null;
+      this.recovering = false;
+      this.seq = 'Fired Shutdown';
+      this.ctl.brk52G = false;
+      this.ctl.master = 'STOP';
+      this.ctl.osMainRun = this.ctl.osBackupRun = false;
+      this._osSpeed = 0;
+      this.tags.FUEL_FLOW = 0;
+      this.tags.GEN_POWER = this.tags.GEN_MVAR = 0;
+      ['ET_NT', 'ET_NT_R', 'TOT_ET', 'TOT_ET_R'].forEach(function (k) {
+        this.tags[k] = (this.tags[k] ?? 0) + 1;
+      }, this);
+      this.log('TRIP', this.tripCause);
+      this.derive();
+      this.push();
+    },
+    masterReset: function () {
+      if (Object.values(this.faults).some(Boolean)) {
+        this.log('REJECT', 'Remove instructor fault before MASTER RESET');
+        return false;
+      }
+      if (this.tags.SPEED > 500) {
+        this.log('REJECT', 'Wait for coast-down below 500 rpm');
+        return false;
+      }
+      this.tripped = false;
+      this.tripCause = '';
+      this.tripItems = {};
+      this._delays = { vib: 0, fuel: 0, exh: 0 };
+      this._spreadSt = { t: 0, alarm: false };
+      this.spreadAlarm = false;
+      this._startup = null;
+      this.recovering = false;
+      this.ctl.brk52G = false;
+      this.seq = this.tags.SPEED > 0 ? 'Coast Down' : 'Ready to Start';
+      this.lastReset = this._simT;
+      this.log('RESET', 'Protection latch cleared; separate START required');
+      this.derive();
+      this.push();
+      this.publish();
+      return true;
+    },
+    bumpStarts: function () {
+      ['TOT_ST', 'TOT_ST_R', 'FS_N', 'FS_N_R'].forEach(function (k) {
+        this.tags[k] = (this.tags[k] ?? 0) + 1;
+      }, this);
+    },
+    counterReset: function () {
+      [
+        'EOH_R',
+        'AOH_R',
+        'GAS_R',
+        'FS_N_R',
+        'ET_NT_R',
+        'TOT_ST_R',
+        'TOT_ET_R',
+      ].forEach(function (k) {
+        this.tags[k] = 0;
+      }, this);
+      this.tags.RST_DATE = 'SIM DAY ' + Math.floor(this._simT / 86400);
+      this.tags.RST_TIME = this._simT.toFixed(1) + ' s';
+      this.log('COUNTERS', 'Resettable counters cleared');
+      this.push();
+    },
+    syncReady: function () {
+      var C = H25_CFG.SYNC;
+      return (
+        !this.tripped &&
+        this.ctl.field41 &&
+        this.tags.SPEED >= 7200 &&
+        Math.abs(this.tags.GEN_HZ - 50 + this.sync.df) <= C.dfMax &&
+        Math.abs((this.tags.GEN_KV / 10.92 - 1) * 100 + this.sync.dvPct) <=
+          C.dvPct &&
+        Math.abs(this.sync.dphi) <= C.dphiMax
+      );
+    },
+    release52G: function () {
+      if (this.syncReady()) {
+        this.ctl.brk52G = true;
+        if (this.seq === 'Seq. Complete') this.seq = 'Part Load';
+        this.log('BREAKER', '52G closed');
+      } else this.log('REJECT', 'Synchronism check not satisfied');
+      this.derive();
+      this.push();
+    },
+    close41: function () {
+      this.ctl.field41 = true;
+      this.log('FIELD', '41 closed');
+    },
+    open41: function () {
+      this.ctl.field41 = false;
+      if (this.ctl.brk52G) this.trip('LOSS OF EXCITATION', '86G');
+    },
+    releaseIBH: function () {
+      this.ctl.ibhLock = false;
+      this.log('IBH', 'Lockout released');
+    },
+    setMotorMode: function (id, auto) {
+      if (this.motors[id]) {
+        this.motors[id].auto = !!auto;
+        this.log('MOTOR', id + ' ' + (auto ? 'AUTO' : 'MANUAL'));
+      }
+    },
+    motorStart: function (id) {
+      if (this.motors[id]) {
+        this.motors[id].run = true;
+        this.motors[id].stopLatch = false;
+        this.log('MOTOR', id + ' START');
+      }
+    },
+    motorStop: function (id) {
+      if (!this.motors[id]) return;
+      this.motors[id].run = false;
+      this.motors[id].stopLatch = true;
+      var pairs = {
+        mop1: 'mop2',
+        mop2: 'mop1',
+        hop1: 'hop2',
+        hop2: 'hop1',
+        mist1: 'mist2',
+        mist2: 'mist1',
+      };
+      var p = pairs[id];
+      if (p && this.motors[p].auto) this.motorStart(p);
+      if (
+        (id === 'gfc1' || id === 'gfc3') &&
+        !this.motors.gfc1.run &&
+        !this.motors.gfc3.run &&
+        this.motors.gfc2.auto
+      )
+        this.motorStart('gfc2');
+      this.log('MOTOR', id + ' STOP');
+    },
+    osEnable: function () {
+      this.ctl.osTest = 'ENABLE';
+    },
+    osDisable: function () {
+      this.ctl.osTest = 'DISABLE';
+      this.osAbortMain();
+      this.osAbortBackup();
+    },
+    osStartMain: function () {
+      if (this.running() && this.ctl.osTest === 'ENABLE') {
+        this.ctl.osMainRun = true;
+        this.ctl.osBackupRun = false;
+        this._osSpeed = this.tags.SPEED;
+        this.log('TEST', 'Main overspeed started');
+      }
+    },
+    osStartBackup: function () {
+      if (this.running() && this.ctl.osTest === 'ENABLE') {
+        this.ctl.osBackupRun = true;
+        this.ctl.osMainRun = false;
+        this._osSpeed = this.tags.SPEED;
+        this.log('TEST', 'Backup overspeed started');
+      }
+    },
+    osAbortMain: function () {
+      this.ctl.osMainRun = false;
+      this._osSpeed = 0;
+    },
+    osAbortBackup: function () {
+      this.ctl.osBackupRun = false;
+      this._osSpeed = 0;
+    },
+    liftCal: function (v) {
+      this.ctl.lift = v;
+      this.log(
+        'INFO',
+        'Lift selection ' + v + ' (calibration actuator model not implemented)',
+      );
+    },
+    setFault: function (name, on) {
+      if (name in this.faults) {
+        this.faults[name] = !!on;
+        this.log('INSTRUCTOR', name + ' ' + (on ? 'ON' : 'OFF'));
+      }
+    },
+    clearFaults: function () {
+      for (var k in this.faults) this.faults[k] = false;
+      this.log('INSTRUCTOR', 'Fault inputs removed; reset separately');
+    },
+    burnerOpen: function () {
+      var r = {},
+        keys = ['F1', 'F21', 'F22', 'F23', 'F24'],
+        tags = ['F1_GCV', 'F2_1_GCV', 'F2_2_GCV', 'F2_3_GCV', 'F2_4_GCV'];
+      keys.forEach(function (k, i) {
+        // Operator-confirmed indication: below KD4H ONLY F2-4 turns white.
+        // No KC4L hysteresis or delay is applied to this indication. Actual GCV
+        // position remains a lagged feedback signal and may still be closing.
+        if (k === 'F24') {
+          var ffd = this.tags.FOFFD, kd4h = this.tags.KD4H;
+          r[k] = !this.flameOn() || !Number.isFinite(ffd) ||
+            !Number.isFinite(kd4h) || ffd < kd4h;
+        } else r[k] = !this.flameOn() || this.tags[tags[i]] < 5;
+      }, this);
+      return r;
+    },
+    scColor: function (id) {
+      var ok = true;
+      if (id === 'zero') ok = this.tags.SPEED < 50;
+      else if (id === 'brk') ok = !this.ctl.brk52G;
+      else if (id === 'sc3_4t') ok = !this.tripped;
+      else if (id === 'sc1_off') ok = this.ctl.masterMode !== 'OFF';
+      else if (id === 'sc4_qm')
+        ok = this.motors.mop1.run || this.motors.mop2.run;
+      else if (id === 'sc4_tb')
+        ok = this.motors.ven1.run || this.motors.ven2.run;
+      else if (id === 'sc1_hd')
+        ok = this.motors.hop1.run || this.motors.hop2.run;
+      else if (id === 'sc2_fgn') ok = !this.faults.fuel;
+      else if (id === 'sc3_vd') ok = !this.faults.vib;
+      return ok ? 'rgb(0,200,0)' : 'rgb(255,0,0)';
+    },
+    startLoop: function () {
+      if (this._loop) clearInterval(this._loop);
+      var self = this,
+        last = performance.now(),
+        acc = 0;
+      this._loop = setInterval(function () {
+        var now = performance.now(),
+          elapsed = now - last;
+        last = now;
+        if (
+          self.paused ||
+          (typeof document !== 'undefined' && document.hidden)
+        ) {
+          acc = 0;
+          return;
+        }
+        acc += Math.min(elapsed, 1000);
+        while (acc >= 500) {
+          self.tick(500);
+          acc -= 500;
+        }
+      }, 100);
+    },
+  };
+})();

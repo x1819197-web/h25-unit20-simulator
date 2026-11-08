@@ -1,7 +1,6 @@
-/* Screen 6 - GENERATOR. Pixel-measured overlays. */
+/* Native view metadata. Legacy measurement coordinates retained for tag inventory only; not used for layout. */
 window.SCR_GEN = {
   id: "gen",
-  bg: "ref/06_generator.png",
   title: "6 GENERATOR(1)",
   nav: "GENERATOR",
   navList: ["START-UP", "FFD CONTROL", "SYNCHRO. &EXC. OPE.", "FUEL GAS", "LUBE OIL", "GENERATOR", "VENTILATION", "IBH CONTROL", "MOTORS", "MENU"],
@@ -53,5 +52,4 @@ window.SCR_GEN = {
     {x:932, y:488, w:106, h:36, fs:10, label:"MASTER RESET", g:null, v:null, act:"reset"},
     {x:1037, y:488, w:74, h:36, fs:11, label:"TRIP", g:null, v:null, act:"trip"},
   ],
-  render: function (page) { renderOverlay(page, this); }
 };

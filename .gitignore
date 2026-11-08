@@ -11,3 +11,7 @@ dist/
 # Python
 __pycache__/
 *.py[cod]
+
+# Native web tooling
+node_modules/
+test-results/

@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>KU-20 · Native HMI</title>
+    <link rel="stylesheet" href="../css/diasys.css?v=3.0.0" />
+    <style>
+      #app > .footer {
+        grid-row: 4;
+      }
+      .ku-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1.5fr) minmax(280px, 1fr);
+        gap: 14px;
+      }
+      .ku-scheme {
+        max-height: 340px;
+      }
+      #app {
+        grid-template-rows: 52px 70px minmax(0, 1fr) 30px;
+      }
+      .ku-kpis {
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+      }
+      .quality-note {
+        font-size: 11px;
+        padding: 10px 12px;
+        color: #6b591c;
+        background: #fff6df;
+      }
+      @media (max-width: 1100px) {
+        .ku-layout {
+          grid-template-columns: 1fr;
+        }
+      }
+      @media (max-width: 650px) {
+        #app {
+          grid-template-rows: auto auto minmax(0, 1fr) 28px;
+        }
+        .ku-kpis {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <header class="topbar">
+        <div class="brand">UNIT-20 <small>КУ-20 · КОТЁЛ-УТИЛИЗАТОР</small></div>
+        <span class="model-badge">NATIVE HMI / TRAINING MODEL</span
+        ><span class="spacer"></span
+        ><a id="h25-link" href="../index.html">H25 ↗</a
+        ><button id="h25test">H25 TEST OFF</button
+        ><button id="events-button">EVENT LOG</button
+        ><button id="sndbtn">SOUND ON</button
+        ><button id="fsbtn">FULLSCREEN</button>
+      </header>
+      <section class="kpis ku-kpis">
+        <div class="kpi">
+          <label>ДАВЛЕНИЕ БАРАБАНА</label
+          ><span class="number" data-value="pSelected"></span
+          ><span class="unit">bar g</span>
+        </div>
+        <div class="kpi">
+          <label>УРОВЕНЬ</label
+          ><span class="number" data-value="levelSelected"></span
+          ><span class="unit">mm</span>
+        </div>
+        <div class="kpi">
+          <label>ПИТАТЕЛЬНАЯ ВОДА</label
+          ><span class="number" data-value="feed"></span
+          ><span class="unit">t/h</span>
+        </div>
+        <div class="kpi">
+          <label>РАСХОД ПАРА</label
+          ><span class="number" data-value="steam"></span
+          ><span class="unit">t/h</span>
+        </div>
+        <div class="kpi">
+          <label>ПЕРЕГРЕТЫЙ ПАР</label
+          ><span class="number" data-value="tSH"></span
+          ><span class="unit">°C</span>
+        </div>
+        <div class="kpi status">
+          <label>СОСТОЯНИЕ</label><span class="number" id="ku-state"></span>
+        </div>
+      </section>
+      <div class="workspace">
+        <aside class="sidebar">
+          <h2>ТЕХНОЛОГИЧЕСКИЕ ЭКРАНЫ</h2>
+          <nav>
+            <button class="nav-btn active" data-view="9">
+              <span class="index">09</span>PL3009 · БАРАБАН</button
+            ><button class="nav-btn" data-view="10">
+              <span class="index">10</span>PL3010 · ПАР / ВОДА
+            </button>
+          </nav>
+          <div class="bottom-link">SVG / HTML<br />Без фото-подложек</div>
+        </aside>
+        <main class="main">
+          <div class="screen-head">
+            <div>
+              <div class="eyebrow">KU-20 / NATIVE PROCESS VIEW</div>
+              <h1 id="screen-title">PL3009 · Система барабана</h1>
+            </div>
+            <select class="mobile-nav" id="screen-select" aria-label="Экран">
+              <option value="9">PL3009</option>
+              <option value="10">PL3010</option></select
+            ><span class="screen-meta" id="link-status"></span>
+          </div>
+          <div id="trip-banner" class="alarm-banner" role="alert" hidden></div>
+          <div id="page" class="screen-content"></div>
+          <div class="action-bar">
+            <span class="message" id="command-message"
+              >Упрощённая учебная модель. Насыщение — табличная интерполяция, не
+              IAPWS-IF97.</span
+            ><button id="pause-button">PAUSE</button
+            ><button id="scenario-button">RESET SCENARIO</button
+            ><button id="protection-button">PROTECTION ON</button
+            ><button id="reset-button">MASTER RESET</button
+            ><button id="trip-button" class="danger">BOILER TRIP</button>
+          </div>
+        </main>
+      </div>
+      <footer class="footer">
+        <span>UNIT-20 / v3.0.0</span><span id="link-quality"></span
+        ><span class="spacer"></span><span>Фоновая вкладка: пауза</span
+        ><span id="sim-clock"></span>
+      </footer>
+    </div>
+    <dialog id="events-dialog">
+      <div class="dialog-head">
+        <h2>События котла</h2>
+        <button id="events-close">CLOSE</button>
+      </div>
+      <div id="events-body" class="dialog-body"></div>
+    </dialog>
+    <script>
+      window.UNIT20_ROLE = 'ku20';
+      window.UNIT20_H25_ENTRY = '../index.html';
+    </script>
+    <script src="model.js?v=3.0.0"></script>
+    <script src="../js/unit20-link.js?v=3.0.0"></script>
+    <script src="app.js?v=3.0.0"></script>
+  </body>
+</html>

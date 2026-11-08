@@ -1,8 +1,11 @@
 @echo off
-REM UNIT-20 offline exe ni qayta yig'ish (H25 + KU-20 qozon).
-REM O'zgarishlardan keyin shu faylni ikki marta bosing.
+setlocal
 cd /d "%~dp0"
-python -m PyInstaller UNIT20-Simulator.spec
-echo.
-echo Tayyor: dist\UNIT20-Simulator.exe
+call npm test
+if errorlevel 1 exit /b 1
+call npm run build
+if errorlevel 1 exit /b 1
+python -m PyInstaller --clean UNIT20-Simulator.spec
+if errorlevel 1 exit /b 1
+echo Built dist\UNIT20-Simulator.exe
 pause

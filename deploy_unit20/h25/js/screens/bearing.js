@@ -1,7 +1,6 @@
-/* Screen 10 - BEARING OIL. Pixel-measured overlays. */
+/* Native view metadata. Legacy measurement coordinates retained for tag inventory only; not used for layout. */
 window.SCR_BRG = {
   id: "brg",
-  bg: "ref/10_bearing_oil.png",
   title: "10 BEARING OIL",
   nav: "BEARING OIL",
   navList: ["START-UP", "BEARING OIL", "EXHAUST", "VIBRATION", "WHEELSPACE", "MENU"],
@@ -60,5 +59,4 @@ window.SCR_BRG = {
     {x:933, y:462, w:102, h:37, fs:10, label:"MASTER RESET", g:null, v:null, act:"reset"},
     {x:1039, y:462, w:72, h:37, fs:11, label:"TRIP", g:null, v:null, act:"trip"},
   ],
-  render: function (page) { renderOverlay(page, this); }
 };

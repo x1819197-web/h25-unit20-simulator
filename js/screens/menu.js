@@ -1,8 +1,6 @@
-/* MENU - unified screen list. One program, all 19 screens.
- * No ref background (bg:null -> refbg hidden, clean panel). */
+/* Native view metadata. Legacy measurement coordinates retained for tag inventory only; not used for layout. */
 window.SCR_MENU = {
   id: "menu",
-  bg: null,
   title: "MENU",
   nav: "MENU",
   navList: ["START-UP", "FFD CONTROL", "SYNCHRO. &EXC. OPE.", "FUEL GAS", "LUBE OIL",
@@ -39,5 +37,4 @@ window.SCR_MENU = {
     {x:634, y:438, w:320, h:32, fs:13, label:"18 DATA REPORT 2", act:"goto", to:"dr2"},
     {x:394, y:474, w:320, h:32, fs:13, label:"19 OVERSPEED", act:"goto", to:"os"},
   ],
-  render: function (page) { renderOverlay(page, this); }
 };

@@ -1,7 +1,6 @@
-/* Screen vib. Pixel-measured overlays. */
+/* Native view metadata. Legacy measurement coordinates retained for tag inventory only; not used for layout. */
 window.SCR_VIB = {
   id: "vib",
-  bg: "ref/12_vibration.png",
   title: "12 VIBRATION",
   nav: "VIBRATION",
   navList: ["START-UP", "BEARING OIL", "EXHAUST", "VIBRATION", "WHEELSPACE", "MENU"],
@@ -68,5 +67,4 @@ window.SCR_VIB = {
     {x:1035, y:484, w:105, h:38, fs:10, label:"MASTER RESET", g:null, v:null, act:"reset"},
     {x:1142, y:484, w:72, h:38, fs:11, label:"TRIP", g:null, v:null, act:"trip"},
   ],
-  render: function (page) { renderOverlay(page, this); }
 };

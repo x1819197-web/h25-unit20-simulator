@@ -1,7 +1,6 @@
-/* Screen 15 - TIMERS. */
+/* Native view metadata. Legacy measurement coordinates retained for tag inventory only; not used for layout. */
 window.SCR_TIM = {
   id: "tim",
-  bg: "ref/15_timer.png",
   title: "15 TIMER",
   nav: "TIMERS",
   navList: ["START-UP", "START CHECK", "TIMERS", "TRIP MONITOR", "DATA REPORT 1", "DATA REPORT 2", "MENU"],
@@ -28,5 +27,4 @@ window.SCR_TIM = {
     {x:933, y:467, w:102, h:30, fs:10, label:"MASTER RESET", g:null, v:null, act:"reset"},
     {x:1039, y:466, w:69, h:32, fs:11, label:"TRIP", g:null, v:null, act:"trip"},
   ],
-  render: function (page) { renderOverlay(page, this); }
 };

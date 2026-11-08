@@ -1,7 +1,6 @@
-/* Screen 5 - LUBE OIL. Pixel-measured overlays. */
+/* Native view metadata. Legacy measurement coordinates retained for tag inventory only; not used for layout. */
 window.SCR_LUBE = {
   id: "lube",
-  bg: "ref/05_lube_oil.png",
   title: "5 LUBE OIL",
   nav: "LUBE OIL",
   navList: ["START-UP", "FFD CONTROL", "SYNCHRO. &EXC. OPE.", "FUEL GAS", "LUBE OIL", "GENERATOR", "VENTILATION", "IBH CONTROL", "MOTORS", "MENU"],
@@ -46,5 +45,4 @@ window.SCR_LUBE = {
     {x:1006, y:464, w:105, h:37, fs:10, label:"MASTER RESET", g:null, v:null, act:"reset"},
     {x:1112, y:464, w:71, h:37, fs:11, label:"TRIP", g:null, v:null, act:"trip"},
   ],
-  render: function (page) { renderOverlay(page, this); }
 };
